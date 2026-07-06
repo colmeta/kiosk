@@ -1,7 +1,7 @@
 {
-  "name": "agent-mobile-money",
+  "name": "ngabo",
   "version": "1.0.0",
-  "description": "",
+  "description": "Ngabo Capital Control System",
   "main": "app-addendum.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
