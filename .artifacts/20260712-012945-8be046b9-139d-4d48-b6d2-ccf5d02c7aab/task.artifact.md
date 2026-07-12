@@ -1,0 +1,26 @@
+# Task Management
+
+- [x] Initial Research and Planning
+	- [x] Explore project structure
+	- [x] Read developer brief and context documents (Integrated "Ngabo" name)
+	- [x] Analyze existing web and native code
+- [x] Implement Notification Listener Service
+	- [x] Create `NotificationListenerService.java`
+	- [x] Update `AndroidManifest.xml`
+	- [x] Update `MainActivity.java` to request notification listener permission
+- [x] Refine Onboarding and Compliance
+	- [x] Ensure consent screen is correctly logged
+	- [x] Implement "Right to Erasure" (wipe data) logic in settings
+	- [x] Add privacy policy link or content
+- [x] Enhance Fraud Detection and AI Reconciliation
+	- [x] Refine regex patterns in `app.js` based on real notification formats
+	- [x] Implement deep anomaly detection logic
+	- [x] Enhance AI Reconciliation diagnostic messages
+- [x] Final Polish and Market Readiness
+	- [x] Review UI for consistency and direct sunlight readability
+	- [x] Add analytics and crashlytics (simulated or placeholder for pilot)
+	- [x] Prepare for first test APK build
+- [/] Verification and Testing
+	- [x] Verify notification parsing code logic
+	- [x] Verify fraud detection layers code logic
+	- [x] Verify EOD reconciliation and KSS score calculation code logic

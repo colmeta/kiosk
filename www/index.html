@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="KioskControl UG — The mobile money business operating system that writes itself. Protects Ugandan kiosk agents from fraud, theft, and cash losses.">
-  <meta name="theme-color" content="#0a0e1a">
+  <meta name="description" content="Ngabo — Your mobile money business book that writes itself. Protects Ugandan kiosk agents from fraud, theft, and cash losses.">
+  <meta name="theme-color" content="#0D1425">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="KioskControl">
+  <meta name="apple-mobile-web-app-title" content="Ngabo">
 
-  <title>KioskControl UG — Business Control System</title>
+  <title>Ngabo — Mobile Money Intelligence</title>
 
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="manifest" href="manifest.json">
@@ -27,75 +27,6 @@
 </head>
 
 <body>
-
-  <!-- ═══════════════════════════════════════════════════════════════
-       1. CONTROL PANEL — Desktop Testing / Demo Sidebar
-       ═══════════════════════════════════════════════════════════════ -->
-  <aside class="control-panel" aria-label="Simulator Control Panel">
-
-    <header class="cp-header">
-      <h1 class="cp-logo">⚙️ KioskControl Simulator</h1>
-      <p class="cp-subtitle">Testing &amp; Demo Console</p>
-    </header>
-
-    <!-- Role Toggle -->
-    <section class="cp-section" aria-labelledby="cp-role-heading">
-      <h2 id="cp-role-heading" class="cp-section-title">Active Role</h2>
-      <div class="cp-role-toggle">
-        <label class="cp-radio-label">
-          <input type="radio" name="sim-role" id="role-owner" value="owner" checked>
-          <span>Owner</span>
-        </label>
-        <label class="cp-radio-label">
-          <input type="radio" name="sim-role" id="role-worker" value="worker">
-          <span>Worker</span>
-        </label>
-      </div>
-    </section>
-
-    <!-- Quick Actions -->
-    <section class="cp-section" aria-labelledby="cp-actions-heading">
-      <h2 id="cp-actions-heading" class="cp-section-title">Quick Actions</h2>
-      <div class="cp-actions-grid">
-        <button type="button" id="btn-reset-all" class="btn-danger-sm">Reset All Data</button>
-        <button type="button" id="btn-trigger-reminder">Trigger 6PM Reminder</button>
-        <button type="button" id="btn-trigger-eod">Trigger End-of-Day</button>
-        <button type="button" id="btn-run-scan">Run Historical Scan</button>
-        <button type="button" id="btn-seed-kiosks" class="btn-primary-sm" style="grid-column: span 2;">Seed Remote Kiosks</button>
-      </div>
-    </section>
-
-    <!-- SMS Simulator -->
-    <section class="cp-section" aria-labelledby="cp-sms-heading">
-      <h2 id="cp-sms-heading" class="cp-section-title">📨 Send Test SMS</h2>
-
-      <div class="sim-presets">
-        <button type="button" class="sim-preset-btn" data-preset="mtn-deposit-50k">MTN Deposit 50K</button>
-        <button type="button" class="sim-preset-btn" data-preset="mtn-withdraw-100k">MTN Withdraw 100K</button>
-        <button type="button" class="sim-preset-btn" data-preset="mtn-withdraw-500k">MTN Withdraw 500K</button>
-        <button type="button" class="sim-preset-btn" data-preset="airtel-deposit-200k">Airtel Deposit 200K</button>
-        <button type="button" class="sim-preset-btn" data-preset="airtel-withdraw-75k">Airtel Withdraw 75K</button>
-        <button type="button" class="sim-preset-btn" data-preset="mtn-commission">MTN Commission</button>
-        <button type="button" class="sim-preset-btn fraud" data-preset="fraud-spoofed">🚨 FAKE SMS (Spoofed)</button>
-        <button type="button" class="sim-preset-btn fraud" data-preset="fraud-bad-math">🚨 FAKE SMS (Bad Math)</button>
-        <button type="button" class="sim-preset-btn fraud" data-preset="fraud-bad-format">🚨 FAKE SMS (Bad Format)</button>
-      </div>
-
-      <fieldset class="sim-custom-sms">
-        <legend class="cp-field-label">Custom Message</legend>
-        <input type="text" id="sim-sender" class="cp-input" placeholder="e.g. MobileMoney or +256772..." aria-label="Sender number or name">
-        <textarea id="sim-message" class="cp-textarea" rows="4" placeholder="Paste or type SMS text..." aria-label="SMS message body"></textarea>
-        <button type="button" id="btn-sim-send" class="btn-primary-sm">Send Custom SMS</button>
-      </fieldset>
-    </section>
-
-    <!-- Parse Log -->
-    <section class="cp-section" aria-labelledby="cp-log-heading">
-      <h2 id="cp-log-heading" class="cp-section-title">📋 Parse Log</h2>
-      <div id="sim-log" class="sim-log" role="log" aria-live="polite"></div>
-    </section>
-
-  </aside>
 
 
   <!-- ═══════════════════════════════════════════════════════════════
@@ -125,7 +56,7 @@
 
           <div class="consent-hero">
             <span class="material-icons-outlined consent-shield-icon">verified_user</span>
-            <h1 class="consent-title">KioskControl UG</h1>
+            <h1 class="consent-title">Ngabo</h1>
             <p class="consent-tagline">Your mobile money business book that writes itself.</p>
           </div>
 
@@ -133,11 +64,11 @@
             <h2>DATA PRIVACY DISCLOSURE</h2>
             <p>
               To automate your daily transaction ledger and protect your business from fraud,
-              KioskControl requests permission to read transaction notifications on this device.
+              Ngabo requests permission to read transaction notifications on this device.
             </p>
             <p><strong>BY TAPPING "I ACCEPT &amp; ACTIVATE":</strong></p>
             <ol>
-              <li>You grant KioskControl explicit authorization to parse native transaction notifications sent by mobile money networks (MTN Uganda, Airtel Uganda) and banking agents.</li>
+              <li>You grant Ngabo explicit authorization to parse native transaction notifications sent by mobile money networks (MTN Uganda, Airtel Uganda) and banking agents.</li>
               <li>Your business records are stored securely ONLY on this physical phone's encrypted memory. We DO NOT send your transaction data to external servers without your direct permission.</li>
               <li>You retain the right to erase all captured data instantly at any time via the "Wipe Data &amp; Reset" tool in your settings panel.</li>
               <li>Data capture is performed entirely locally and offline, minimizing risk and protecting your financial privacy.</li>
@@ -743,11 +674,18 @@
 
           <!-- Group: About -->
           <section class="settings-group" aria-labelledby="sg-about">
-            <h2 id="sg-about" class="settings-group-title">About KioskControl</h2>
+            <h2 id="sg-about" class="settings-group-title">About Ngabo</h2>
 
             <div class="settings-item">
               <span class="settings-item-label">Version</span>
-              <span class="settings-item-value">2.0.0 — Phase 1 MVP</span>
+              <span class="settings-item-value">v1.0 — Pilot Release</span>
+            </div>
+
+            <div class="settings-item" id="btn-privacy-policy">
+              <span class="settings-item-label">Privacy Policy</span>
+              <button type="button" class="settings-item-action">
+                <span class="material-icons-outlined">chevron_right</span>
+              </button>
             </div>
 
             <div class="pricing-tiers">
@@ -917,6 +855,29 @@
       </div>
     </div>
 
+
+    <!-- ═══════════════════════════════════════════════════════════
+         MODAL: Privacy Policy
+         ═══════════════════════════════════════════════════════════ -->
+    <div id="modal-privacy" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Privacy Policy">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h2>Privacy Policy</h2>
+          <button type="button" class="modal-close-btn modal-close" aria-label="Close">
+            <span class="material-icons-outlined">close</span>
+          </button>
+        </header>
+        <div class="modal-body privacy-body">
+          <p><strong>Ngabo — Your Business Shield</strong></p>
+          <p>We are committed to protecting your financial data. In accordance with Uganda's Data Protection Act 2019:</p>
+          <ul>
+            <li><strong>Local Storage:</strong> All transaction records are stored ONLY on this device.</li>
+            <li><strong>No Cloud Sync:</strong> We do not upload your data to our servers without your explicit action (like backup).</li>
+            <li><strong>Control:</strong> You have the right to erase all data at any time via the "Wipe All Data" button in Settings.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════════════
          BOTTOM NAVIGATION — Analytics tab added

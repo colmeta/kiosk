@@ -1,9 +1,9 @@
-﻿/* ============================================================================
- * KioskControl UG — Mobile Money Business Operating System v2.0
+/* ============================================================================
+ * Ngabo — Mobile Money Intelligence v1.0
  * Complete Offline-First PWA Logic Engine
  * ============================================================================
  * Modules:
- *   1. DB           – localStorage wrapper with JSON serialisation
+ *   1. DB           – Capacitor Preferences wrapper (encrypted storage)
  *   2. Parser       – Regex-based MTN / Airtel SMS parser
  *   3. Security     – Three-layer fraud detection
  *   4. Tariff       – Fee / commission calculator
@@ -13,7 +13,7 @@
  *   8. App          – Initialisation & lifecycle
  *   9. Handlers     – All UI event handlers
  *  10. Utilities    – Formatting, toasts, status-bar clock
- *  11. Seeder       – 30-day historical data generator
+ *  11. (Removed)    – Seeder removed for production
  *  12. Analytics    – Canvas chart rendering engine
  * ========================================================================= */
 
@@ -34,20 +34,20 @@ const DB = (() => {
     "kc_consent_log",
   ];
 
-  /** Retrieve a parsed value from localStorage. Returns [] for missing arrays. */
-  function get(key) {
+  /** Retrieve a value from encrypted Capacitor Preferences. Returns [] for missing arrays. */
+  async function get(key) {
     try {
-      const raw = localStorage.getItem(key);
-      if (raw === null) return key === "kc_config" ? null : [];
-      return JSON.parse(raw);
+      const { value } = await Capacitor.Plugins.Preferences.get({ key });
+      if (value === null) return key === "kc_config" ? null : [];
+      return JSON.parse(value);
     } catch (_) {
       return key === "kc_config" ? null : [];
     }
   }
 
   /** Persist a value (object or array) under the given key. */
-  function set(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
+  async function set(key, data) {
+    await Capacitor.Plugins.Preferences.set({ key, value: JSON.stringify(data) });
   }
 
   /** RFC-4122 v4 UUID generator (crypto-safe when available). */
@@ -68,34 +68,33 @@ const DB = (() => {
     );
   }
 
-  /** Nuke every kc_ key from localStorage. */
-  function reset() {
-    const toRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith("kc_")) toRemove.push(k);
+  /** Nuke every kc_ key from Capacitor Preferences. */
+  async function reset() {
+    const { keys } = await Capacitor.Plugins.Preferences.keys();
+    const toRemove = keys.filter(k => k.startsWith("kc_"));
+    for (const k of toRemove) {
+      await Capacitor.Plugins.Preferences.remove({ key: k });
     }
-    toRemove.forEach((k) => localStorage.removeItem(k));
   }
 
   /** Export the complete dataset as a Base-64 encoded JSON string. */
-  function exportData() {
+  async function exportData() {
     const payload = {};
-    KEYS.forEach((k) => {
-      const v = localStorage.getItem(k);
-      if (v !== null) payload[k] = JSON.parse(v);
-    });
+    for (const k of KEYS) {
+      const { value } = await Capacitor.Plugins.Preferences.get({ key: k });
+      if (value !== null) payload[k] = JSON.parse(value);
+    }
     return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
   }
 
   /** Restore a Base-64 encoded backup. */
-  function importData(b64) {
+  async function importData(b64) {
     try {
       const json = decodeURIComponent(escape(atob(b64)));
       const payload = JSON.parse(json);
-      Object.keys(payload).forEach((k) => {
-        localStorage.setItem(k, JSON.stringify(payload[k]));
-      });
+      for (const k of Object.keys(payload)) {
+        await Capacitor.Plugins.Preferences.set({ key: k, value: JSON.stringify(payload[k]) });
+      }
       return true;
     } catch (_) {
       return false;
@@ -443,7 +442,7 @@ const Tariff = (() => {
    * Look up the tariff fee for a given amount, network and transaction type.
    */
   function calculate(amount, network, type) {
-    const config = DB.get("kc_config") || {};
+    const config = await DB.get("kc_config") || {};
     const taxRate = config.tax_rate !== undefined ? config.tax_rate : 0.5;
     const tariffs = (config.tariff_rates && config.tariff_rates[network])
       ? config.tariff_rates
@@ -486,9 +485,9 @@ const KSS = (() => {
    * R = successful reconciliations × 2        → max 20 pts
    */
   function calculate() {
-    const txns = DB.get("kc_transactions");
-    const moneyOut = DB.get("kc_money_outside");
-    const profiles = DB.get("kc_credit_profiles");
+    const txns = await DB.get("kc_transactions");
+    const moneyOut = await DB.get("kc_money_outside");
+    const profiles = await DB.get("kc_credit_profiles");
 
     const now = Date.now();
     const ninetyDays = 90 * 24 * 60 * 60 * 1000;
@@ -557,7 +556,7 @@ const AIReconciler = (() => {
     const findings = [];
 
     // a) Outstanding loans
-    const loans = DB.get("kc_money_outside").filter(
+    const loans = await DB.get("kc_money_outside").filter(
       (m) => m.transaction_direction === "Lent_Out" && m.status === "Active"
     );
     if (loans.length > 0) {
@@ -572,7 +571,7 @@ const AIReconciler = (() => {
 
     // b) Commission withdrawals today
     const today = new Date().toISOString().slice(0, 10);
-    const todayTxns = DB.get("kc_transactions").filter(
+    const todayTxns = await DB.get("kc_transactions").filter(
       (t) => t.timestamp && t.timestamp.startsWith(today)
     );
     const commissions = todayTxns.filter((t) => t.type === "Commission");
@@ -737,7 +736,7 @@ function showToast(message, type = "info") {
   toast.textContent = `${icons[type] || ""} ${message}`;
   container.appendChild(toast);
   requestAnimationFrame(() => (toast.style.opacity = "1"));
-  setTimeout(() => {
+  setTimeout(async () => {
     toast.style.opacity = "0";
     setTimeout(() => toast.remove(), 350);
   }, 3000);
@@ -774,263 +773,17 @@ function animateValue(el, target, duration = 800, formatFn = formatUGX) {
   requestAnimationFrame(update);
 }
 
-/* ──────────────────────────────────────────────────────────────────────────────
- * 11. PRESET SMS MESSAGES
- * ────────────────────────────────────────────────────────────────────────── */
 
-const SMS_PRESETS = {
-  "mtn-deposit-50k": {
-    sender: "MobileMoney",
-    textTemplate(bal) {
-      return `You have received UGX 50,000 from 0772345678. New balance: UGX ${fmtNum(bal + 50000)}.`;
-    },
-    network: "MTN",
-    delta: 50000,
-    type: "Deposit",
-  },
-  "mtn-withdraw-100k": {
-    sender: "MobileMoney",
-    textTemplate(bal) {
-      return `Withdrawn UGX 100,000 from 0785432109. Commission earned: UGX 1,200. New balance: UGX ${fmtNum(bal - 100000)}.`;
-    },
-    network: "MTN",
-    delta: -100000,
-    type: "Withdrawal",
-  },
-  "mtn-withdraw-500k": {
-    sender: "MobileMoney",
-    textTemplate(bal) {
-      return `Withdrawn UGX 500,000 from 0771234567. Commission earned: UGX 3,500. New balance: UGX ${fmtNum(bal - 500000)}.`;
-    },
-    network: "MTN",
-    delta: -500000,
-    type: "Withdrawal",
-  },
-  "airtel-deposit-200k": {
-    sender: "AirtelMoney",
-    textTemplate(bal) {
-      return `You have received UGX 200,000 from 0702345678. Your Airtel Money balance is UGX ${fmtNum(bal + 200000)}.`;
-    },
-    network: "Airtel",
-    delta: 200000,
-    type: "Deposit",
-  },
-  "airtel-withdraw-75k": {
-    sender: "AirtelMoney",
-    textTemplate(bal) {
-      return `Cash Out of UGX 75,000 to 0708765432 completed. Charge: UGX 700. Balance: UGX ${fmtNum(bal - 75000)}.`;
-    },
-    network: "Airtel",
-    delta: -75000,
-    type: "Withdrawal",
-  },
-  "mtn-commission": {
-    sender: "MobileMoney",
-    textTemplate() {
-      return "Commission of UGX 2,500 earned on transaction TXN2024061234. Total commission: UGX 45,000.";
-    },
-    network: "MTN",
-    delta: 0,
-    type: "Commission",
-  },
-  "fraud-spoofed": {
-    sender: "+256772000111",
-    textTemplate(bal) {
-      return `You have received UGX 1,000,000 from 0772111222. New balance: UGX ${fmtNum(bal + 1000000)}.`;
-    },
-    network: "MTN",
-    delta: 1000000,
-    type: "Deposit",
-  },
-  "fraud-bad-math": {
-    sender: "MobileMoney",
-    textTemplate() {
-      return "You have received UGX 1,000,000 from 0772111222. New balance: UGX 99,999,999.";
-    },
-    network: "MTN",
-    delta: 1000000,
-    type: "Deposit",
-  },
-  "fraud-bad-format": {
-    sender: "MobileMoney",
-    textTemplate() {
-      return "Congrats! You recieved UGX 500,000 from MoMo Promo. Bal: UGX 5,000,000. Claim at bit.ly/xyz";
-    },
-    network: "MTN",
-    delta: 0,
-    type: "Deposit",
-  },
-};
-
-/** Format a plain number with commas (helper for SMS templates). */
-function fmtNum(n) {
-  return Math.round(n).toLocaleString("en-UG");
-}
-
-/* ──────────────────────────────────────────────────────────────────────────────
- * 12. HISTORICAL DATA SEEDER
- * ────────────────────────────────────────────────────────────────────────── */
-
-function seedHistoricalData() {
-  const kioskId = DB.generateUUID();
-  const ownerId = DB.generateUUID();
-
-  DB.set("kc_kiosks", [
-    {
-      id: kioskId,
-      name: "Ngabo Main",
-      district: "Kampala Central",
-      owner_id: ownerId,
-      created_at: new Date().toISOString(),
-    },
-  ]);
-
-  const mtnWalletId = DB.generateUUID();
-  const airtelWalletId = DB.generateUUID();
-  const bankWalletId = DB.generateUUID();
-
-  const wallets = [
-    {
-      id: mtnWalletId,
-      kiosk_id: kioskId,
-      carrier_type: "MTN",
-      current_float: 2400000,
-      current_cash: 1500000,
-    },
-    {
-      id: airtelWalletId,
-      kiosk_id: kioskId,
-      carrier_type: "Airtel",
-      current_float: 850000,
-      current_cash: 600000,
-    },
-    {
-      id: bankWalletId,
-      kiosk_id: kioskId,
-      carrier_type: "Bank",
-      current_float: 500000,
-      current_cash: 500000,
-    },
-  ];
-  DB.set("kc_wallets", wallets);
-
-  // Transactions (30 days)
-  const transactions = [];
-  const now = new Date();
-  let mtnBal = 2400000;
-  let airBal = 850000;
-
-  for (let day = 29; day >= 0; day--) {
-    const numTxns = 30 + Math.floor(Math.random() * 51); // 30-80
-
-    for (let t = 0; t < numTxns; t++) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - day);
-      date.setHours(8 + Math.floor(Math.random() * 12));
-      date.setMinutes(Math.floor(Math.random() * 60));
-      date.setSeconds(Math.floor(Math.random() * 60));
-
-      const isMTN = Math.random() > 0.35;
-      const walletId = isMTN ? mtnWalletId : airtelWalletId;
-      const network = isMTN ? "MTN" : "Airtel";
-
-      const isDeposit = Math.random() > 0.45;
-      const type = isDeposit ? "Deposit" : "Withdrawal";
-      const amountBands = [5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000];
-      const amount = amountBands[Math.floor(Math.random() * amountBands.length)];
-
-      let commission = 0;
-      if (type === "Withdrawal") {
-        const calc = Tariff.calculate(amount, network, "Withdrawal");
-        commission = calc.commission;
-      }
-
-      if (isMTN) {
-        mtnBal += isDeposit ? amount : -amount;
-        if (mtnBal < 50000) mtnBal = 500000;
-      } else {
-        airBal += isDeposit ? amount : -amount;
-        if (airBal < 50000) airBal = 300000;
-      }
-
-      const phone = `07${7 + Math.floor(Math.random() * 3)}${String(
-        Math.floor(Math.random() * 10000000)
-      ).padStart(7, "0")}`;
-
-      transactions.push({
-        id: DB.generateUUID(),
-        wallet_id: walletId,
-        type,
-        amount,
-        commission_earned: commission,
-        recorded_balance: isMTN ? mtnBal : airBal,
-        counterparty: phone,
-        timestamp: date.toISOString(),
-        raw_payload: `${type} of UGX ${amount.toLocaleString("en-UG")} — ${network}`,
-        source_type: "SMS_Legacy",
-        security_flag: "Verified",
-      });
-    }
-  }
-  DB.set("kc_transactions", transactions);
-
-  // Money Outside seed
-  const moneyOutside = [];
-  const names = ["Mukasa James", "Achieng Grace", "Okello David", "Nakato Sarah"];
-  for (let i = 0; i < 3; i++) {
-    const created = new Date();
-    created.setDate(created.getDate() - Math.floor(Math.random() * 20 + 5));
-    const targetDate = new Date(created);
-    targetDate.setDate(targetDate.getDate() + 14);
-    const principal = [200000, 500000, 150000][i];
-    moneyOutside.push({
-      id: DB.generateUUID(),
-      kiosk_id: kioskId,
-      party_name: names[i],
-      transaction_direction: i < 2 ? "Lent_Out" : "Borrowed_In",
-      principal_amount: principal,
-      repaid_amount: i === 2 ? principal : 0,
-      repayment_target_date: targetDate.toISOString(),
-      cleared_timestamp: i === 2 ? new Date().toISOString() : null,
-      status: i === 2 ? "Settled" : "Active",
-      notes: "",
-      created_at: created.toISOString(),
-    });
-  }
-  DB.set("kc_money_outside", moneyOutside);
-
-  // Credit Profile
-  const kssResult = KSS.calculate();
-  DB.set("kc_credit_profiles", [
-    {
-      id: DB.generateUUID(),
-      kiosk_id: kioskId,
-      rolling_90_day_volume: transactions.reduce((s, t) => s + t.amount, 0),
-      daily_average_transactions: Math.round(transactions.length / 30),
-      max_single_drawdown: 2000000,
-      float_stockout_count: 1,
-      overdue_loans_count: 0,
-      last_reconciled_at: new Date().toISOString(),
-      last_reconciled_count: 5,
-      kiosk_stability_score: kssResult.score,
-    },
-  ]);
-
-  // Final wallet balance sync
-  wallets[0].current_float = mtnBal;
-  wallets[1].current_float = airBal;
-  DB.set("kc_wallets", wallets);
-}
 
 /* ──────────────────────────────────────────────────────────────────────────────
  * SCREEN REFRESH HELPERS
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Refresh the Dashboard screen with live data from DB. */
-function refreshDashboard() {
-  const wallets  = DB.get("kc_wallets");
-  const txns     = DB.get("kc_transactions");
-  const config   = DB.get("kc_config") || {};
+async function refreshDashboard() {
+  const wallets  = await DB.get("kc_wallets");
+  const txns     = await DB.get("kc_transactions");
+  const config   = await DB.get("kc_config") || {};
 
   /* ── Greeting ── */
   const hour = new Date().getHours();
@@ -1114,7 +867,7 @@ function refreshDashboard() {
   if (elBar) {
     // Animate bar fill
     elBar.style.transition = "width 1s cubic-bezier(0.16, 1, 0.3, 1)";
-    setTimeout(() => { elBar.style.width = `${kss.score}%`; }, 100);
+    setTimeout(async () => { elBar.style.width = `${kss.score}%`; }, 100);
 
     // Colour by score
     if (kss.score >= 80)       elBar.style.background = "linear-gradient(90deg, #10B981, #059669)";
@@ -1181,9 +934,9 @@ function renderRecentTransactions(todayTxns, wallets) {
 }
 
 /** Refresh the Money Outside screen. */
-function refreshMoneyOutside() {
-  const entries = DB.get("kc_money_outside");
-  const config  = DB.get("kc_config") || {};
+async function refreshMoneyOutside() {
+  const entries = await DB.get("kc_money_outside");
+  const config  = await DB.get("kc_config") || {};
   const list    = document.getElementById("loans-list");
   if (!list) return;
 
@@ -1243,13 +996,13 @@ function refreshMoneyOutside() {
       btn.addEventListener("click", (ev) => {
         ev.stopPropagation();
         const loanId  = btn.getAttribute("data-loan-id");
-        const allLoans = DB.get("kc_money_outside");
+        const allLoans = await DB.get("kc_money_outside");
         const idx     = allLoans.findIndex((l) => l.id === loanId);
         if (idx !== -1) {
           allLoans[idx].status          = "Settled";
           allLoans[idx].repaid_amount   = allLoans[idx].principal_amount;
           allLoans[idx].cleared_timestamp = new Date().toISOString();
-          DB.set("kc_money_outside", allLoans);
+          await DB.set("kc_money_outside", allLoans);
           showToast("Loan marked as settled ✓", "success");
           refreshMoneyOutside();
         }
@@ -1278,9 +1031,9 @@ function refreshMoneyOutside() {
 
 /** Refresh the Audit screen. */
 function refreshAudit() {
-  const wallets = DB.get("kc_wallets");
-  const txns    = DB.get("kc_transactions");
-  const config  = DB.get("kc_config") || {};
+  const wallets = await DB.get("kc_wallets");
+  const txns    = await DB.get("kc_transactions");
+  const config  = await DB.get("kc_config") || {};
 
   const today    = new Date().toISOString().slice(0, 10);
   const todayTxns = txns.filter((t) => t.timestamp && t.timestamp.startsWith(today));
@@ -1323,8 +1076,8 @@ function refreshAudit() {
 }
 
 /** Refresh the Settings screen. */
-function refreshSettings() {
-  const config = DB.get("kc_config") || {};
+async function refreshSettings() {
+  const config = await DB.get("kc_config") || {};
 
   // settings-biz-name is now an <input>
   const elBizName = document.getElementById("settings-biz-name");
@@ -1378,8 +1131,8 @@ function refreshTariff() {
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Main analytics refresh — called on nav to analytics screen. */
-function refreshAnalytics() {
-  const txns       = DB.get("kc_transactions");
+async function refreshAnalytics() {
+  const txns       = await DB.get("kc_transactions");
   const activeBtn  = document.querySelector(".analytics-range-btn.active");
   const days       = activeBtn ? parseInt(activeBtn.dataset.range, 10) : 7;
 
@@ -1582,7 +1335,7 @@ function renderAnalyticsSummary(dailyData) {
  * SCAN ANIMATION
  * ────────────────────────────────────────────────────────────────────────── */
 
-function startScanAnimation() {
+async function startScanAnimation() {
   const bar         = document.getElementById("scan-progress-bar");
   const counter     = document.getElementById("scan-counter");
   const continueBtn = document.getElementById("btn-scan-continue");
@@ -1605,7 +1358,7 @@ function startScanAnimation() {
     if (progress < 1) {
       requestAnimationFrame(tick);
     } else {
-      seedHistoricalData();
+      // Seeder removed for production — real data comes from SMS bridge
       if (continueBtn) {
         continueBtn.style.display = "inline-flex";
       }
@@ -1616,110 +1369,10 @@ function startScanAnimation() {
   requestAnimationFrame(tick);
 }
 
-/* ──────────────────────────────────────────────────────────────────────────────
- * SIMULATOR — Process an SMS through the full pipeline
- * ────────────────────────────────────────────────────────────────────────── */
 
-function processSimulatedSMS(sender, text) {
-  const wallets      = DB.get("kc_wallets");
-  const mtnWallet    = wallets.find((w) => w.carrier_type === "MTN");
-  const airtelWallet = wallets.find((w) => w.carrier_type === "Airtel");
-
-  const parsed = Parser.parse(text, sender);
-  let currentBalance = null;
-  let targetWallet   = mtnWallet;
-
-  if (parsed.success) {
-    if (parsed.network === "Airtel") targetWallet = airtelWallet;
-    if (targetWallet) currentBalance = targetWallet.current_float;
-  }
-
-  // Security check
-  const secResult = Security.validate(text, sender, currentBalance);
-  logToSim(
-    `🔒 Security: ${secResult.safe ? "SAFE" : "⚠ " + secResult.severity.toUpperCase()}`,
-    secResult.safe ? "safe" : "danger"
-  );
-
-  if (secResult.flags.length > 0) {
-    secResult.flags.forEach((f) =>
-      logToSim(`   ↳ ${f.layer}: ${f.reason}`, "warning")
-    );
-  }
-
-  // Critical → show fraud overlay
-  if (!secResult.safe && secResult.severity === "critical") {
-    showFraudAlert(sender, text, secResult.flags);
-    return;
-  }
-
-  if (!parsed.success) {
-    logToSim("❌ Parser: Could not match any known SMS pattern.", "danger");
-    return;
-  }
-
-  logToSim(
-    `✅ Parsed: ${parsed.type} of ${formatUGX(parsed.amount)} — ${parsed.network}`,
-    "safe"
-  );
-
-  if (targetWallet) {
-    const securityFlag = secResult.safe ? "Verified" : "Mismatch";
-
-    const txn = {
-      id:               DB.generateUUID(),
-      wallet_id:        targetWallet.id,
-      type:             parsed.type,
-      amount:           parsed.amount,
-      commission_earned: parsed.commission || 0,
-      recorded_balance: parsed.balance || targetWallet.current_float,
-      counterparty:     parsed.counterparty || "",
-      timestamp:        new Date().toISOString(),
-      raw_payload:      text,
-      source_type:      "Notification",
-      security_flag:    securityFlag,
-    };
-
-    const txns = DB.get("kc_transactions");
-    txns.push(txn);
-    DB.set("kc_transactions", txns);
-
-    // Update wallet balance
-    if (parsed.type === "Deposit") {
-      targetWallet.current_float += parsed.amount;
-      targetWallet.current_cash  -= parsed.amount;
-    } else if (parsed.type === "Withdrawal") {
-      targetWallet.current_float -= parsed.amount;
-      targetWallet.current_cash  += parsed.amount;
-    }
-    if (parsed.commission) {
-      targetWallet.current_float += parsed.commission;
-    }
-
-    DB.set("kc_wallets", wallets);
-
-    logToSim(
-      `💾 Saved: ${parsed.type} — New float: ${formatUGX(targetWallet.current_float)}`,
-      "safe"
-    );
-  }
-
-  if (Nav.getCurrent() === "dashboard") refreshDashboard();
-}
-
-/** Write a line to the simulator log area. */
-function logToSim(message, type) {
-  const log = document.getElementById("sim-log");
-  if (!log) return;
-  const line      = document.createElement("div");
-  line.className  = `sim-log-line ${type || ""}`;
-  line.textContent = `[${formatTime(new Date())}] ${message}`;
-  log.appendChild(line);
-  log.scrollTop = log.scrollHeight;
-}
 
 /** Show the fraud alert overlay. */
-function showFraudAlert(sender, text, flags) {
+async function showFraudAlert(sender, text, flags) {
   // Fixed: correct element ID is "fraud-alert-overlay"
   const overlay = document.getElementById("fraud-alert-overlay");
   if (!overlay) return;
@@ -1759,25 +1412,25 @@ function attachEventHandlers() {
   /* =================================================================
    * CONSENT SCREEN
    * ============================================================== */
-  on("#btn-decline", () => {
+  on("#btn-decline", async () => {
     showToast("You must accept to use Ngabo", "error");
   });
 
-  on("#btn-accept", () => {
-    const log = DB.get("kc_consent_log");
+  on("#btn-accept", async () => {
+    const log = await DB.get("kc_consent_log");
     log.push({
       timestamp:   new Date().toISOString(),
       action:      "consent_granted",
       device_hash: navigator.userAgent.slice(0, 40),
     });
-    DB.set("kc_consent_log", log);
+    await DB.set("kc_consent_log", log);
     Nav.goto("setup");
   });
 
   /* =================================================================
    * SETUP SCREEN
    * ============================================================== */
-  onAll(".role-card", function () {
+  onAll(".role-card", async function () {
     document.querySelectorAll(".role-card").forEach((c) => {
       c.classList.remove("selected");
       c.setAttribute("aria-pressed", "false");
@@ -1786,7 +1439,7 @@ function attachEventHandlers() {
     this.setAttribute("aria-pressed", "true");
   });
 
-  on("#btn-setup-continue", () => {
+  on("#btn-setup-continue", async () => {
     const nameInput = document.getElementById("input-biz-name");
     const bizName   = nameInput ? nameInput.value.trim() : "";
     if (!bizName) {
@@ -1796,7 +1449,7 @@ function attachEventHandlers() {
     const selectedRole = document.querySelector(".role-card.selected");
     const role = selectedRole ? (selectedRole.getAttribute("data-role") || "owner") : "owner";
 
-    DB.set("kc_config", {
+    await DB.set("kc_config", {
       business_name:    bizName,
       role,
       pin:              null,
@@ -1819,7 +1472,7 @@ function attachEventHandlers() {
     });
   }
 
-  onAll(".num-key", function () {
+  onAll(".num-key", async function () {
     const val = this.getAttribute("data-key") || this.textContent.trim();
 
     if (val === "back" || val === "⌫") {
@@ -1833,9 +1486,9 @@ function attachEventHandlers() {
     updatePinDots();
 
     if (pinBuffer.length === 4) {
-      const config = DB.get("kc_config") || {};
+      const config = await DB.get("kc_config") || {};
       config.pin   = pinBuffer;
-      DB.set("kc_config", config);
+      await DB.set("kc_config", config);
       showToast("PIN set successfully ✓", "success");
       pinBuffer = "";
       Nav.goto("scan");
@@ -1845,14 +1498,14 @@ function attachEventHandlers() {
   /* =================================================================
    * SCAN SCREEN
    * ============================================================== */
-  on("#btn-scan-continue", () => {
+  on("#btn-scan-continue", async () => {
     Nav.goto("dashboard");
   });
 
   /* =================================================================
    * BOTTOM NAVIGATION
    * ============================================================== */
-  onAll(".nav-item", function () {
+  onAll(".nav-item", async function () {
     const screen = this.getAttribute("data-screen");
     if (screen) Nav.goto(screen);
   });
@@ -1860,7 +1513,7 @@ function attachEventHandlers() {
   /* =================================================================
    * DASHBOARD
    * ============================================================== */
-  on("#btn-verify-balance", () => {
+  on("#btn-verify-balance", async () => {
     const input = prompt("Enter your counted cash total (UGX):");
     if (input === null) return;
     const actual = Number(String(input).replace(/,/g, ""));
@@ -1868,7 +1521,7 @@ function attachEventHandlers() {
       showToast("Please enter a valid number", "error");
       return;
     }
-    const wallets  = DB.get("kc_wallets");
+    const wallets  = await DB.get("kc_wallets");
     const expected = wallets.reduce((s, w) => s + (w.current_cash || 0), 0);
     const diff     = expected - actual;
 
@@ -1887,8 +1540,8 @@ function attachEventHandlers() {
     if (!modal) return;
     modal.hidden = false;
 
-    const wallets   = DB.get("kc_wallets");
-    const txns      = DB.get("kc_transactions");
+    const wallets   = await DB.get("kc_wallets");
+    const txns      = await DB.get("kc_transactions");
     const activeFilter = document.querySelector(".txn-filter-btn.active");
     const filter    = activeFilter ? activeFilter.dataset.filter : "all";
     const today     = new Date().toISOString().slice(0, 10);
@@ -1934,7 +1587,7 @@ function attachEventHandlers() {
   on("#btn-view-all-txns", openTxnModal);
 
   // Filter tabs inside modal
-  onAll(".txn-filter-btn", function () {
+  onAll(".txn-filter-btn", async function () {
     document.querySelectorAll(".txn-filter-btn").forEach((b) => {
       b.classList.remove("active");
       b.setAttribute("aria-selected", "false");
@@ -1947,7 +1600,7 @@ function attachEventHandlers() {
   /* =================================================================
    * MONEY OUTSIDE — tabs use .tab-btn (fixed from .mo-tab)
    * ============================================================== */
-  onAll(".tab-btn", function () {
+  onAll(".tab-btn", async function () {
     // Only affect the money-outside tab group
     const parentGroup = this.closest(".money-tabs");
     if (!parentGroup) return;
@@ -1960,18 +1613,18 @@ function attachEventHandlers() {
     refreshMoneyOutside();
   });
 
-  on("#btn-add-loan", () => {
+  on("#btn-add-loan", async () => {
     const modal = document.getElementById("modal-add-loan");
     if (modal) modal.hidden = false;
   });
 
   // Direction buttons in loan form
-  onAll(".direction-btn", function () {
+  onAll(".direction-btn", async function () {
     document.querySelectorAll(".direction-btn").forEach((b) => b.classList.remove("selected"));
     this.classList.add("selected");
   });
 
-  on("#btn-submit-loan", () => {
+  on("#btn-submit-loan", async () => {
     const nameEl   = document.getElementById("loan-person");
     const amountEl = document.getElementById("loan-amount");
     const dueEl    = document.getElementById("loan-due");
@@ -1988,7 +1641,7 @@ function attachEventHandlers() {
       return;
     }
 
-    const kiosks  = DB.get("kc_kiosks");
+    const kiosks  = await DB.get("kc_kiosks");
     const kioskId = kiosks.length > 0 ? kiosks[0].id : DB.generateUUID();
 
     const entry = {
@@ -2007,9 +1660,9 @@ function attachEventHandlers() {
       created_at:            new Date().toISOString(),
     };
 
-    const entries = DB.get("kc_money_outside");
+    const entries = await DB.get("kc_money_outside");
     entries.push(entry);
-    DB.set("kc_money_outside", entries);
+    await DB.set("kc_money_outside", entries);
 
     const modal = document.getElementById("modal-add-loan");
     if (modal) modal.hidden = true;
@@ -2026,18 +1679,18 @@ function attachEventHandlers() {
   /* =================================================================
    * TARIFF CALCULATOR — use .tariff-network-btn / .tariff-type-btn
    * ============================================================== */
-  onAll(".tariff-network-btn", function () {
+  onAll(".tariff-network-btn", async function () {
     document.querySelectorAll(".tariff-network-btn").forEach((b) => b.classList.remove("active"));
     this.classList.add("active");
     refreshTariff(); // regenerate quick-ref table for selected network
   });
 
-  onAll(".tariff-type-btn", function () {
+  onAll(".tariff-type-btn", async function () {
     document.querySelectorAll(".tariff-type-btn").forEach((b) => b.classList.remove("active"));
     this.classList.add("active");
   });
 
-  on("#btn-calc-tariff", () => {
+  on("#btn-calc-tariff", async () => {
     const amtInput = document.getElementById("tariff-amount");
     const amount   = amtInput ? Number(String(amtInput.value).replace(/,/g, "")) : 0;
     if (!amount || amount < 500) {
@@ -2053,7 +1706,7 @@ function attachEventHandlers() {
     const result  = Tariff.calculate(amount, network, type);
 
     const card    = document.getElementById("tariff-result");
-    const config  = DB.get("kc_config") || {};
+    const config  = await DB.get("kc_config") || {};
     const taxRate = config.tax_rate !== undefined ? config.tax_rate : 0.5;
 
     if (card) {
@@ -2070,15 +1723,15 @@ function attachEventHandlers() {
   /* =================================================================
    * ANALYTICS
    * ============================================================== */
-  onAll(".analytics-range-btn", function () {
+  onAll(".analytics-range-btn", async function () {
     document.querySelectorAll(".analytics-range-btn").forEach((b) => b.classList.remove("active"));
     this.classList.add("active");
     refreshAnalytics();
   });
 
-  on("#btn-export-report", () => {
-    const txns    = DB.get("kc_transactions");
-    const config  = DB.get("kc_config") || {};
+  on("#btn-export-report", async () => {
+    const txns    = await DB.get("kc_transactions");
+    const config  = await DB.get("kc_config") || {};
     const today   = new Date().toISOString().slice(0, 10);
     const todayTxns = txns.filter((t) => t.timestamp && t.timestamp.startsWith(today));
 
@@ -2103,7 +1756,7 @@ Generated by Ngabo`;
   /* =================================================================
    * AUDIT SCREEN
    * ============================================================== */
-  on("#btn-verify-audit", () => {
+  on("#btn-verify-audit", async () => {
     const inputFloat = document.getElementById("audit-actual-float");
     const inputCash  = document.getElementById("audit-actual-cash");
 
@@ -2115,7 +1768,7 @@ Generated by Ngabo`;
       return;
     }
 
-    const wallets      = DB.get("kc_wallets");
+    const wallets      = await DB.get("kc_wallets");
     const expectedFloat = wallets.reduce((s, w) => s + (w.current_float || 0), 0);
     const expectedCash  = wallets.reduce((s, w) => s + (w.current_cash  || 0), 0);
 
@@ -2158,11 +1811,11 @@ Generated by Ngabo`;
     }
 
     // Update reconciliation count
-    const profiles = DB.get("kc_credit_profiles");
+    const profiles = await DB.get("kc_credit_profiles");
     if (profiles.length > 0) {
       profiles[0].last_reconciled_at    = new Date().toISOString();
       profiles[0].last_reconciled_count = (profiles[0].last_reconciled_count || 0) + 1;
-      DB.set("kc_credit_profiles", profiles);
+      await DB.set("kc_credit_profiles", profiles);
     }
 
     showToast("Reconciliation complete", "success");
@@ -2171,16 +1824,16 @@ Generated by Ngabo`;
   /* =================================================================
    * SETTINGS
    * ============================================================== */
-  on("#btn-change-pin", () => {
-    const config = DB.get("kc_config");
+  on("#btn-change-pin", async () => {
+    const config = await DB.get("kc_config");
     if (config) {
       config.pin = null;
-      DB.set("kc_config", config);
+      await DB.set("kc_config", config);
       Nav.goto("pin-setup");
     }
   });
 
-  on("#btn-backup", () => {
+  on("#btn-backup", async () => {
     const b64  = DB.export();
     const area = document.getElementById("backup-code-area");
     const ta   = document.getElementById("backup-textarea");
@@ -2197,7 +1850,7 @@ Generated by Ngabo`;
     }
   });
 
-  on("#btn-copy-backup", () => {
+  on("#btn-copy-backup", async () => {
     const ta = document.getElementById("backup-textarea");
     if (!ta) return;
     if (navigator.clipboard) {
@@ -2211,12 +1864,12 @@ Generated by Ngabo`;
     }
   });
 
-  on("#btn-restore", () => {
+  on("#btn-restore", async () => {
     const area = document.getElementById("restore-input-area");
     if (area) area.hidden = false;
   });
 
-  on("#btn-restore-confirm", () => {
+  on("#btn-restore-confirm", async () => {
     const area = document.getElementById("restore-code-area");
     if (!area || !area.value.trim()) {
       showToast("Paste a backup code first", "warning");
@@ -2231,118 +1884,32 @@ Generated by Ngabo`;
     }
   });
 
-  on("#btn-wipe", () => {
+  on("#btn-wipe", async () => {
     if (confirm("⚠ This will erase ALL data permanently. Are you sure?")) {
-      DB.reset();
+      await DB.reset();
       showToast("All data wiped. Reloading…", "warning");
       setTimeout(() => location.reload(), 1200);
     }
   });
 
-  on("#btn-save-tariffs", () => {
-    const config    = DB.get("kc_config") || {};
+  on("#btn-save-tariffs", async () => {
+    const config    = await DB.get("kc_config") || {};
     const taxInput  = document.getElementById("settings-tax-rate");
     const nameInput = document.getElementById("settings-biz-name");
 
     if (taxInput)  config.tax_rate     = Number(taxInput.value)  || 0.5;
     if (nameInput && nameInput.value.trim()) config.business_name = nameInput.value.trim();
 
-    DB.set("kc_config", config);
+    await DB.set("kc_config", config);
     showToast("Settings saved ✓", "success");
     refreshDashboard();
   });
 
-  /* =================================================================
-   * SIMULATOR / CONTROL PANEL
-   * ============================================================== */
-  onAll(".sim-preset-btn", function () {
-    const presetKey = this.getAttribute("data-preset");
-    const preset    = SMS_PRESETS[presetKey];
-    if (!preset) return;
-
-    const wallets   = DB.get("kc_wallets");
-    const netWallet = wallets.find((w) => w.carrier_type === preset.network);
-    const curBal    = netWallet ? netWallet.current_float : 0;
-
-    const text      = preset.textTemplate(curBal);
-    const sender    = preset.sender;
-
-    const senderInput = document.getElementById("sim-sender");
-    const msgInput    = document.getElementById("sim-message");
-    if (senderInput) senderInput.value = sender;
-    if (msgInput)    msgInput.value    = text;
-
-    logToSim(`━━━ Preset: ${presetKey} ━━━`, "info");
-    processSimulatedSMS(sender, text);
-  });
-
-  on("#btn-sim-send", () => {
-    const senderInput = document.getElementById("sim-sender");
-    const msgInput    = document.getElementById("sim-message");
-    const sender      = senderInput ? senderInput.value.trim() : "";
-    const text        = msgInput    ? msgInput.value.trim()    : "";
-
-    if (!sender || !text) {
-      showToast("Enter both sender and message", "warning");
-      return;
-    }
-    logToSim("━━━ Custom SMS ━━━", "info");
-    processSimulatedSMS(sender, text);
-  });
-
-  /* ── Role Toggle ── */
-  on("#role-owner", () => {
-    const config = DB.get("kc_config") || {};
-    config.role  = "owner";
-    DB.set("kc_config", config);
-    showToast("Switched to Owner view", "info");
-    if (Nav.getCurrent()) Nav.goto(Nav.getCurrent());
-  });
-
-  on("#role-worker", () => {
-    const config = DB.get("kc_config") || {};
-    config.role  = "worker";
-    DB.set("kc_config", config);
-    showToast("Switched to Worker view (restricted)", "info");
-    if (Nav.getCurrent()) Nav.goto(Nav.getCurrent());
-  });
-
-  /* ── Control Panel Buttons ── */
-  on("#btn-reset-all", () => {
-    if (confirm("Reset all data and reload?")) {
-      DB.reset();
-      location.reload();
-    }
-  });
-
-  on("#btn-trigger-reminder", () => {
-    const entries = DB.get("kc_money_outside").filter((e) => e.status === "Active");
-    if (entries.length > 0) {
-      const total = entries.reduce(
-        (s, e) => s + (e.principal_amount - (e.repaid_amount || 0)), 0
-      );
-      showToast(
-        `🔔 ${entries.length} outstanding entries — ${formatUGX(total)} to collect!`,
-        "warning"
-      );
-    } else {
-      showToast("🔔 No outstanding money outside. All clear!", "success");
-    }
-    Nav.goto("money-outside");
-  });
-
-  on("#btn-trigger-eod", () => {
-    Nav.goto("audit");
-  });
-
-  on("#btn-run-scan", () => {
-    Nav.goto("scan");
-  });
 
   /* =================================================================
    * FRAUD OVERLAY
    * ============================================================== */
-  on("#btn-dismiss-fraud", () => {
+  on("#btn-dismiss-fraud", async () => {
     const overlay = document.getElementById("fraud-alert-overlay");
     if (overlay) overlay.hidden = true;
   });
@@ -2350,7 +1917,7 @@ Generated by Ngabo`;
   /* =================================================================
    * MODALS — unified close via .modal-close class
    * ============================================================== */
-  onAll(".modal-close", function () {
+  onAll(".modal-close", async function () {
     const modal = this.closest(".modal-overlay");
     if (modal) modal.hidden = true;
   });
@@ -2368,7 +1935,7 @@ Generated by Ngabo`;
  * ────────────────────────────────────────────────────────────────────────── */
 
 const App = (() => {
-  function init() {
+  async function init() {
     attachEventHandlers();
 
     // Status-bar clock
@@ -2376,7 +1943,7 @@ const App = (() => {
     setInterval(updateStatusBarTime, 60000);
 
     // Determine starting screen
-    const config = DB.get("kc_config");
+    const config = await DB.get("kc_config");
 
     if (!config) {
       Nav.goto("consent");
@@ -2572,31 +2139,84 @@ document.addEventListener("click", function (e) {
  } ) ;  
  
 /* ============================================================================
-   NATIVE ANDROID SMS BRIDGE � Production Bridge
+   NATIVE ANDROID SMS BRIDGE — Production Bridge
    ---------------------------------------------------------------------------
    SmsBroadcastReceiver.java fires 'nativeSmsReceived' via evaluateJavascript.
-   This listener catches that event and routes it through the same
-   processSimulatedSMS() pipeline used by the simulator, meaning:
+   This listener catches that event and routes it through the full production
+   pipeline:
    - Regex parsing  (Parser module)
-   - Fraud detection (Security module � 3-layer)
+   - Fraud detection (Security module — 3-layer)
    - DB write + wallet update
    - Toast notification to the agent
    Works on any Android 6+ device with a real MTN/Airtel SIM.
    ============================================================================ */
 
-window.addEventListener('nativeSmsReceived', function(event) {
+window.addEventListener('nativeSmsReceived', async function(event) {
   const { sender, body, isTrusted } = event.detail;
 
   // Safety: ignore empty payloads
   if (!body || body.trim() === '') return;
 
-  // Route directly into the core SMS processing pipeline
-  processSimulatedSMS(sender || 'UNKNOWN', body);
+  // --- Parse the SMS ---
+  const parsed = Parser.parse(body, sender);
 
-  // Show a subtle 'auto-recorded' indicator on the dashboard
-  const config = DB.get('kc_config') || {};
+  // --- Security check ---
+  const wallets = await DB.get('kc_wallets');
+  const targetWallet = wallets.find(w =>
+    parsed.success && parsed.network === 'Airtel'
+      ? w.carrier_type === 'Airtel'
+      : w.carrier_type === 'MTN'
+  );
+  const currentBalance = targetWallet ? targetWallet.current_float : null;
+  const secResult = Security.validate(body, sender, currentBalance);
+
+  // Critical fraud → show overlay and stop
+  if (!secResult.safe && secResult.severity === 'critical') {
+    showFraudAlert(sender, body, secResult.flags);
+    return;
+  }
+
+  // Unknown pattern → silent ignore (not a MoMo SMS)
+  if (!parsed.success) return;
+
+  // --- Write to DB ---
+  if (targetWallet) {
+    const txn = {
+      id:                DB.generateUUID(),
+      wallet_id:         targetWallet.id,
+      type:              parsed.type,
+      amount:            parsed.amount,
+      commission_earned: parsed.commission || 0,
+      recorded_balance:  parsed.balance || targetWallet.current_float,
+      counterparty:      parsed.counterparty || '',
+      timestamp:         new Date().toISOString(),
+      raw_payload:       body,
+      source_type:       'SMS_Native',
+      security_flag:     secResult.safe ? 'Verified' : 'Mismatch',
+    };
+    const txns = await DB.get('kc_transactions');
+    txns.push(txn);
+    await DB.set('kc_transactions', txns);
+
+    // Update wallet balance
+    if (parsed.type === 'Deposit') {
+      targetWallet.current_float += parsed.amount;
+      targetWallet.current_cash  -= parsed.amount;
+    } else if (parsed.type === 'Withdrawal') {
+      targetWallet.current_float -= parsed.amount;
+      targetWallet.current_cash  += parsed.amount;
+    }
+    if (parsed.commission) targetWallet.current_float += parsed.commission;
+    await DB.set('kc_wallets', wallets);
+  }
+
+  // --- Notify the agent ---
+  const config = await DB.get('kc_config') || {};
   if (config.role !== 'worker') {
-    showToast('SMS auto-recorded \u2714 ' + (isTrusted ? '' : '\u26a0\ufe0f Verify sender!'), isTrusted ? 'success' : 'warning');
+    showToast(
+      'SMS auto-recorded \u2714 ' + (isTrusted ? '' : '\u26a0\ufe0f Verify sender!'),
+      isTrusted ? 'success' : 'warning'
+    );
   }
 
   // If dashboard is currently visible, refresh it immediately

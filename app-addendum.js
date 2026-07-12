@@ -2,42 +2,51 @@
  * MULTI-KIOSK DASHBOARD LOGIC
  * ============================================================== */
 
-function refreshMultiKiosk() {
+async function refreshMultiKiosk() {
   const grid = document.getElementById("kiosk-grid");
   if (!grid) return;
 
-  const allProfiles = DB.get("kc_credit_profiles") || [];
+  const allProfiles = await DB.get("kc_credit_profiles") || [];
+  const wallets = await DB.get("kc_wallets") || [];
+  const kiosks = await DB.get("kc_kiosks") || [];
+  const config = await DB.get("kc_config") || {};
+
   if (allProfiles.length === 0) {
-    grid.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding: 20px;">No kiosks found.</p>`;
+    grid.innerHTML = `
+      <div style="text-align:center; padding: 40px 20px; color:var(--text-muted);">
+        <span class="material-icons-outlined" style="font-size:48px; opacity:0.4;">storefront</span>
+        <p style="margin-top:12px;">No kiosks registered yet.</p>
+        <p style="font-size:0.85rem; opacity:0.7;">Kiosks will appear here as transaction data is captured.</p>
+      </div>`;
     return;
   }
 
-  grid.innerHTML = allProfiles.map((p, index) => {
-    let loc = "Nansana Main";
-    let float = DB.get("kc_wallets").reduce((s, w) => s + (w.current_float || 0), 0);
-    let manager = "Collin (You)";
+  grid.innerHTML = allProfiles.map((profile, index) => {
+    // Find matching kiosk for this profile
+    const kiosk = kiosks.find(k => k.id === profile.kiosk_id) || {};
+    const loc = kiosk.name || config.business_name || `Kiosk ${index + 1}`;
+    const manager = kiosk.manager || (index === 0 ? (config.agent_name || "You") : "—");
+
+    // Calculate actual float from wallets linked to this kiosk
+    const kioskWallets = wallets.filter(w => w.kiosk_id === profile.kiosk_id);
+    const float = kioskWallets.length > 0
+      ? kioskWallets.reduce((s, w) => s + (w.current_float || 0), 0)
+      : wallets.reduce((s, w) => s + (w.current_float || 0), 0);
+
+    // Determine status from KSS score
+    const kss = profile.kiosk_stability_score || 0;
     let status = "normal";
     let statusLabel = "✅ Normal";
-    let dataPts = [4, 6, 5, 8, 7, 10, 9];
-    
-    if (index === 1) {
-      loc = "Kyebando Branch";
-      float = 850000;
-      manager = "Sarah";
+    if (kss < 40) {
       status = "shortage";
-      statusLabel = "⚠️ UGX 150K Shortage";
-      dataPts = [8, 7, 5, 4, 3, 2, 4];
-    } else if (index === 2) {
-      loc = "Makindye Branch";
-      float = 3200000;
-      manager = "John";
-      status = "normal";
-      statusLabel = "✅ Normal";
-      dataPts = [2, 3, 5, 8, 9, 12, 14];
+      statusLabel = "⚠️ Needs Attention";
+    } else if (kss < 60) {
+      status = "warning";
+      statusLabel = "⚡ Fair";
     }
 
     return `
-      <div class="kiosk-card" onclick="openKioskDetail('${loc}', '${statusLabel}', ${float})">
+      <div class="kiosk-card" onclick="openKioskDetail('${loc.replace(/'/g, "\\'")}', '${statusLabel.replace(/'/g, "\\'")}', ${float})">
         <div class="kiosk-header">
           <div class="kiosk-info">
             <h3>${loc}</h3>
@@ -58,20 +67,34 @@ function refreshMultiKiosk() {
     `;
   }).join("");
 
-  allProfiles.forEach((p, index) => {
+  // Draw sparklines from real transaction data
+  allProfiles.forEach((profile, index) => {
     const canvas = document.getElementById(`sparkline-${index}`);
-    let dataPts = [4, 6, 5, 8, 7, 10, 9];
-    if (index === 1) dataPts = [8, 7, 5, 4, 3, 2, 4];
-    if (index === 2) dataPts = [2, 3, 5, 8, 9, 12, 14];
-    if (canvas) drawSparkline(canvas, dataPts);
+    if (!canvas) return;
+    const txns = await DB.get("kc_transactions") || [];
+    const profileTxns = txns.filter(t => {
+      const w = wallets.find(w2 => w2.id === t.wallet_id);
+      return w && w.kiosk_id === profile.kiosk_id;
+    });
+    // Build 7-day transaction count series
+    const dataPts = [];
+    const now = new Date();
+    for (let d = 6; d >= 0; d--) {
+      const day = new Date(now);
+      day.setDate(day.getDate() - d);
+      const dayStr = day.toISOString().slice(0, 10);
+      const count = profileTxns.filter(t => t.timestamp && t.timestamp.startsWith(dayStr)).length;
+      dataPts.push(count);
+    }
+    drawSparkline(canvas, dataPts);
   });
 }
 
-function openKioskDetail(name, statusLabel, totalFloat) {
+async function openKioskDetail(name, statusLabel, totalFloat) {
   const modal = document.getElementById("modal-kiosk-detail");
   const title = document.getElementById("modal-kiosk-name");
   const body = document.getElementById("modal-kiosk-body");
-  
+
   if (modal && title && body) {
     title.textContent = name;
     body.innerHTML = `
@@ -87,10 +110,10 @@ function openKioskDetail(name, statusLabel, totalFloat) {
         <span class="kd-label">Cash in Drawer</span>
         <span class="kd-value">${formatUGX(totalFloat * 0.1)}</span>
       </div>
-      ${statusLabel.includes('Shortage') ? `
+      ${statusLabel.includes('Attention') ? `
         <div class="kd-alert-box">
-          <strong>⚠️ Shortage Detected</strong><br>
-          System expected UGX 1,000,000 in Capital based on End of Day audit, but agent reported UGX 850,000.
+          <strong>⚠️ Low Stability Score</strong><br>
+          This kiosk's stability score is below threshold. Check float levels and reconciliation status.
         </div>
       ` : ''}
     `;
@@ -102,11 +125,11 @@ function drawSparkline(canvas, data) {
   const ctx = canvas.getContext('2d');
   const w = canvas.width = canvas.offsetWidth;
   const h = canvas.height = canvas.offsetHeight;
-  
+
   ctx.clearRect(0, 0, w, h);
-  const max = Math.max(...data);
-  const step = w / (data.length - 1);
-  
+  const max = Math.max(...data, 1);
+  const step = w / (data.length - 1 || 1);
+
   ctx.beginPath();
   ctx.moveTo(0, h - (data[0]/max)*h);
   for(let i=1; i<data.length; i++) {
@@ -117,40 +140,9 @@ function drawSparkline(canvas, data) {
   ctx.stroke();
 }
 
-// Hook up the Control Panel button and Role restrictions
-document.addEventListener("DOMContentLoaded", () => {
-  const btnSeed = document.getElementById("btn-seed-kiosks");
-  if (btnSeed) {
-    btnSeed.addEventListener("click", () => {
-      const profiles = DB.get("kc_credit_profiles") || [];
-      if (profiles.length === 1) {
-        profiles.push({ id: DB.generateUUID(), kiosk_id: "kyebando-1", kiosk_stability_score: 45 });
-        profiles.push({ id: DB.generateUUID(), kiosk_id: "makindye-1", kiosk_stability_score: 95 });
-        DB.set("kc_credit_profiles", profiles);
-        showToast("Seeded 2 remote kiosks for demo", "success");
-        if (Nav.getCurrent() === "multi-kiosk") refreshMultiKiosk();
-      }
-    });
-  }
-
-  // Handle worker role restrictions dynamically
-  const origRoleSwitch = document.getElementById("role-worker");
-  if (origRoleSwitch) {
-    origRoleSwitch.addEventListener("change", () => {
-      const navMulti = document.getElementById("nav-multi-kiosk");
-      if (navMulti) navMulti.style.display = "none";
-    });
-  }
-  const origRoleOwner = document.getElementById("role-owner");
-  if (origRoleOwner) {
-    origRoleOwner.addEventListener("change", () => {
-      const navMulti = document.getElementById("nav-multi-kiosk");
-      if (navMulti) navMulti.style.display = "flex";
-    });
-  }
-
-  // Initial hiding if already worker
-  const role = (DB.get("kc_config") || {}).role || "owner";
+// Role-based visibility for multi-kiosk nav
+document.addEventListener("DOMContentLoaded", async () => {
+  const role = (await DB.get("kc_config") || {}).role || "owner";
   const navMulti = document.getElementById("nav-multi-kiosk");
   if (navMulti) {
     navMulti.style.display = role === "worker" ? "none" : "flex";
