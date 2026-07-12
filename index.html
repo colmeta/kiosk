@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="Ngabo � The mobile money business operating system that writes itself. Protects Ugandan kiosk agents from fraud, theft, and cash losses.">
-  <meta name="theme-color" content="#0a0e1a">
+  <meta name="description" content="Ngabo — Your mobile money business book that writes itself. Protects Ugandan kiosk agents from fraud, theft, and cash losses.">
+  <meta name="theme-color" content="#0D1425">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Ngabo">
 
-  <title>Ngabo � Business Control System</title>
+  <title>Ngabo — Mobile Money Intelligence</title>
 
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="manifest" href="manifest.json">
@@ -17,7 +17,7 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Material Icons Outlined -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -29,9 +29,9 @@
 <body>
 
 
-  <!-- ---------------------------------------------------------------
-       2. PHONE VIEWPORT � Mobile App UI
-       --------------------------------------------------------------- -->
+  <!-- ═══════════════════════════════════════════════════════════════
+       2. PHONE VIEWPORT — Mobile App UI
+       ═══════════════════════════════════════════════════════════════ -->
   <main class="phone-viewport" role="main">
 
     <!-- Status Bar -->
@@ -48,9 +48,9 @@
     <div class="screens-container">
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: Consent / Welcome
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-consent" class="screen active" aria-label="Consent Screen">
         <div class="consent-content">
 
@@ -87,9 +87,9 @@
       </section>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: Business Setup
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-setup" class="screen" aria-label="Setup Screen">
         <div class="setup-content">
 
@@ -139,16 +139,16 @@
               </div>
             </div>
 
-            <button type="button" id="btn-setup-continue" class="btn-primary">Continue ?</button>
+            <button type="button" id="btn-setup-continue" class="btn-primary">Continue →</button>
 
           </form>
         </div>
       </section>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: PIN Setup
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-pin-setup" class="screen" aria-label="PIN Setup Screen">
         <div class="pin-content">
 
@@ -183,9 +183,9 @@
       </section>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: Historical Scan
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-scan" class="screen" aria-label="Historical Scan Screen">
         <div class="scan-content">
 
@@ -199,22 +199,22 @@
 
           <p class="scan-counter">Found <strong id="scan-counter">0</strong> transactions</p>
 
-          <button type="button" id="btn-scan-continue" class="btn-primary" style="display:none;">Continue to Dashboard ?</button>
+          <button type="button" id="btn-scan-continue" class="btn-primary" style="display:none;">Continue to Dashboard →</button>
 
         </div>
       </section>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: Dashboard (Main)
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-dashboard" class="screen" aria-label="Dashboard Screen">
         <div class="dashboard-content">
 
           <!-- Greeting Header -->
           <header class="greeting-banner" id="greeting">
             <div class="greeting-left">
-              <h1 class="greeting-text" id="greeting-text">Good Morning ??</h1>
+              <h1 class="greeting-text" id="greeting-text">Good Morning 👋</h1>
               <p class="greeting-biz-name" id="dash-biz-name"></p>
             </div>
             <div class="greeting-right">
@@ -251,7 +251,7 @@
             </div>
           </div>
 
-          <!-- Wallet Cards � Horizontal Scroll -->
+          <!-- Wallet Cards — Horizontal Scroll -->
           <div class="wallet-cards-grid">
             <article class="wallet-card mtn">
               <div class="wallet-card-header">
@@ -336,7 +336,7 @@
           <div class="recent-txns-section">
             <div class="recent-txns-header">
               <h2 class="section-heading">Recent Activity</h2>
-              <button type="button" id="btn-view-all-txns" class="link-btn">View All ?</button>
+              <button type="button" id="btn-view-all-txns" class="link-btn">View All →</button>
             </div>
             <div id="recent-txns-preview" class="recent-txns-preview">
               <div class="empty-state-small">
@@ -350,9 +350,9 @@
       </section>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: Money Outside
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-money-outside" class="screen" aria-label="Money Outside Screen">
         <div class="money-outside-content">
 
@@ -389,7 +389,7 @@
           <!-- Reminder Banner -->
           <div id="reminder-banner" class="reminder-banner" hidden>
             <span class="material-icons-outlined">alarm</span>
-            <p>? Evening Check: You have outstanding amounts. Clear before closing!</p>
+            <p>⏰ Evening Check: You have outstanding amounts. Clear before closing!</p>
           </div>
 
           <!-- FAB -->
@@ -401,21 +401,21 @@
       </section>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: Tariff Calculator
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-tariff" class="screen" aria-label="Tariff Calculator Screen">
         <div class="tariff-content">
 
           <h1 class="screen-title">Fee &amp; Tax Calculator</h1>
 
-          <!-- Network Toggle � class tariff-network-btn added for JS targeting -->
+          <!-- Network Toggle — class tariff-network-btn added for JS targeting -->
           <div class="network-toggle" role="group" aria-label="Select network">
             <button type="button" class="toggle-btn tariff-network-btn active" data-network="MTN">MTN</button>
             <button type="button" class="toggle-btn tariff-network-btn" data-network="Airtel">Airtel</button>
           </div>
 
-          <!-- Type Toggle � class tariff-type-btn added for JS targeting -->
+          <!-- Type Toggle — class tariff-type-btn added for JS targeting -->
           <div class="type-toggle" role="group" aria-label="Select transaction type">
             <button type="button" class="toggle-btn tariff-type-btn active" data-type="Withdrawal">Withdrawal</button>
             <button type="button" class="toggle-btn tariff-type-btn" data-type="Deposit">Deposit</button>
@@ -433,30 +433,30 @@
           <div id="tariff-result" class="tariff-result-card" hidden>
             <div class="tariff-row">
               <span>Transaction Amount</span>
-              <span id="result-amount">�</span>
+              <span id="result-amount">—</span>
             </div>
             <div class="tariff-row">
               <span>Network Fee</span>
-              <span id="result-fee">�</span>
+              <span id="result-fee">—</span>
             </div>
             <div class="tariff-row">
               <span>Tax (0.5%)</span>
-              <span id="result-tax">�</span>
+              <span id="result-tax">—</span>
             </div>
             <div class="tariff-row">
               <span>Agent Commission</span>
-              <span id="result-commission">�</span>
+              <span id="result-commission">—</span>
             </div>
             <hr class="tariff-divider">
             <div class="tariff-row tariff-total">
               <strong>Customer Pays</strong>
-              <strong id="result-total">�</strong>
+              <strong id="result-total">—</strong>
             </div>
           </div>
 
           <!-- Quick Reference Table -->
           <div class="tariff-quick-ref">
-            <h2 class="section-heading">Quick Reference � Withdrawal Fees</h2>
+            <h2 class="section-heading">Quick Reference — Withdrawal Fees</h2>
             <div id="tariff-quick-table" class="tariff-quick-table">
               <!-- populated by refreshTariff() -->
             </div>
@@ -466,9 +466,9 @@
       </section>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: Analytics (NEW)
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-analytics" class="screen" aria-label="Analytics Screen">
         <div class="analytics-content">
 
@@ -513,9 +513,9 @@
       </section>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: End-of-Day Audit
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-audit" class="screen" aria-label="Audit Screen">
         <div class="audit-content">
 
@@ -576,7 +576,7 @@
           <!-- AI Diagnosis Box -->
           <div id="audit-diagnosis" class="ai-diagnosis-box" hidden>
             <div class="ai-diagnosis-header">
-              <h2>?? AI Reconciliation Engine</h2>
+              <h2>🤖 AI Reconciliation Engine</h2>
               <p>Analyzing your transaction timeline...</p>
             </div>
             <ul id="diagnosis-list" class="diagnosis-list"></ul>
@@ -584,7 +584,7 @@
 
           <!-- Transaction Anomalies -->
           <div id="anomalies-section" hidden>
-            <h2 class="anomalies-title">?? Anomalies Detected</h2>
+            <h2 class="anomalies-title">⚠️ Anomalies Detected</h2>
             <ul id="anomalies-list" class="anomalies-list"></ul>
           </div>
 
@@ -592,9 +592,9 @@
       </section>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: Settings
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-settings" class="screen" aria-label="Settings Screen">
         <div class="settings-content">
 
@@ -609,7 +609,7 @@
             </div>
             <div class="settings-item">
               <span class="settings-item-label">Current Role</span>
-              <span class="settings-item-value" id="settings-role">�</span>
+              <span class="settings-item-value" id="settings-role">—</span>
             </div>
             <div class="settings-item">
               <span class="settings-item-label">Change PIN</span>
@@ -678,8 +678,17 @@
 
             <div class="settings-item">
               <span class="settings-item-label">Version</span>
-              <span class="settings-item-value">2.0.0 � Phase 1 MVP</span>
+              <span class="settings-item-value">v1.0 — Pilot Release</span>
             </div>
+
+            <div class="settings-item" id="btn-privacy-policy">
+              <span class="settings-item-label">Privacy Policy</span>
+              <button type="button" class="settings-item-action">
+                <span class="material-icons-outlined">chevron_right</span>
+              </button>
+            </div>
+
+
 
             <div class="settings-item">
               <span class="settings-item-label">Referral Code</span>
@@ -695,15 +704,15 @@
     <!-- END .screens-container -->
 
 
-    <!-- -----------------------------------------------------------
+    <!-- ═══════════════════════════════════════════════════════════
          FRAUD ALERT OVERLAY (Fixed ID: fraud-alert-overlay)
-         ----------------------------------------------------------- -->
+         ═══════════════════════════════════════════════════════════ -->
     <div id="fraud-alert-overlay" class="fraud-alert-overlay" hidden role="alertdialog" aria-modal="true" aria-label="Fraud Warning">
       <div class="fraud-pulse-ring"></div>
       <div class="fraud-pulse-ring ring2"></div>
       <div class="fraud-alert-content">
         <span class="material-icons-outlined fraud-warning-icon">gpp_bad</span>
-        <h1 class="fraud-title">?? FRAUD WARNING</h1>
+        <h1 class="fraud-title">🚨 FRAUD WARNING</h1>
         <p class="fraud-sender-label">From: <strong id="fraud-sender">Unknown Sender</strong></p>
         <p id="fraud-message" class="fraud-message">Suspicious transaction message detected!</p>
         <div id="fraud-flags" class="fraud-flags-list"></div>
@@ -711,14 +720,14 @@
           Do NOT hand over cash.<br>
           Verify your balance via <strong>*165#</strong> or <strong>*185#</strong> immediately.
         </p>
-        <button type="button" id="btn-dismiss-fraud" class="btn-dismiss-fraud">I Understand � Dismiss</button>
+        <button type="button" id="btn-dismiss-fraud" class="btn-dismiss-fraud">I Understand — Dismiss</button>
       </div>
     </div>
 
 
-      <!-- --------------------------------------------
+      <!-- ════════════════════════════════════════════
            SCREEN: Multi-Kiosk Master Dashboard
-           -------------------------------------------- -->
+           ════════════════════════════════════════════ -->
       <section id="screen-multi-kiosk" class="screen" aria-label="Master Kiosk Dashboard">
         <div class="multi-kiosk-content">
           <header class="mk-header">
@@ -732,9 +741,9 @@
         </div>
       </section>
 
-    <!-- -----------------------------------------------------------
+    <!-- ═══════════════════════════════════════════════════════════
          MODAL: Transaction List
-         ----------------------------------------------------------- -->
+         ═══════════════════════════════════════════════════════════ -->
     <div id="modal-transactions" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Today's Transactions">
       <div class="modal-content">
 
@@ -759,9 +768,9 @@
     </div>
 
 
-    <!-- -----------------------------------------------------------
+    <!-- ═══════════════════════════════════════════════════════════
          MODAL: Add Loan / Money Outside
-         ----------------------------------------------------------- -->
+         ═══════════════════════════════════════════════════════════ -->
     <div id="modal-add-loan" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Record Money Outside">
       <div class="modal-content">
 
@@ -783,7 +792,7 @@
             </div>
           </div>
 
-          <!-- Person Name � fixed: id was "loan-party-name" in old JS, now "loan-person" in HTML -->
+          <!-- Person Name — fixed: id was "loan-party-name" in old JS, now "loan-person" in HTML -->
           <div class="form-group">
             <label for="loan-person" class="form-label">Person's Name</label>
             <input type="text" id="loan-person" class="form-input" placeholder="Person's name" required>
@@ -795,7 +804,7 @@
             <input type="number" id="loan-amount" class="form-input" placeholder="Amount in UGX" min="0" required>
           </div>
 
-          <!-- Due Date � fixed: was "loan-due-date", HTML has "loan-due" -->
+          <!-- Due Date — fixed: was "loan-due-date", HTML has "loan-due" -->
           <div class="form-group">
             <label for="loan-due" class="form-label">Due Date</label>
             <input type="date" id="loan-due" class="form-input">
@@ -816,9 +825,9 @@
     </div>
 
 
-    <!-- -----------------------------------------------------------
+    <!-- ═══════════════════════════════════════════════════════════
          MODAL: Kiosk Details (Drill-down)
-         ----------------------------------------------------------- -->
+         ═══════════════════════════════════════════════════════════ -->
     <div id="modal-kiosk-detail" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Kiosk Details">
       <div class="modal-content">
         <header class="modal-header">
@@ -834,9 +843,32 @@
     </div>
 
 
-    <!-- -----------------------------------------------------------
-         BOTTOM NAVIGATION � Analytics tab added
-         ----------------------------------------------------------- -->
+    <!-- ═══════════════════════════════════════════════════════════
+         MODAL: Privacy Policy
+         ═══════════════════════════════════════════════════════════ -->
+    <div id="modal-privacy" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Privacy Policy">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h2>Privacy Policy</h2>
+          <button type="button" class="modal-close-btn modal-close" aria-label="Close">
+            <span class="material-icons-outlined">close</span>
+          </button>
+        </header>
+        <div class="modal-body privacy-body">
+          <p><strong>Ngabo — Your Business Shield</strong></p>
+          <p>We are committed to protecting your financial data. In accordance with Uganda's Data Protection Act 2019:</p>
+          <ul>
+            <li><strong>Local Storage:</strong> All transaction records are stored ONLY on this device.</li>
+            <li><strong>No Cloud Sync:</strong> We do not upload your data to our servers without your explicit action (like backup).</li>
+            <li><strong>Control:</strong> You have the right to erase all data at any time via the "Wipe All Data" button in Settings.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         BOTTOM NAVIGATION — Analytics tab added
+         ═══════════════════════════════════════════════════════════ -->
     <nav class="bottom-nav" aria-label="Main navigation">
       <button type="button" class="nav-item active" data-screen="dashboard" aria-label="Home">
         <span class="material-icons-outlined nav-icon">home</span>
@@ -877,4 +909,3 @@
 
 </body>
 </html>
-
