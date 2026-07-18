@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ngabo</string>
+    <string name="title_activity_main">Ngabo</string>
+    <string name="package_name">com.ngabo.app</string>
+    <string name="custom_url_scheme">com.ngabo.app</string>
+</resources>
