@@ -438,36 +438,37 @@ const Security = (() => {
 const DEFAULT_TARIFFS = {
   MTN: {
     Withdrawal: [
-      { min: 500,     max: 2500,    fee: 330  },
-      { min: 2501,    max: 5000,    fee: 440  },
-      { min: 5001,    max: 15000,   fee: 700  },
-      { min: 15001,   max: 30000,   fee: 880  },
-      { min: 30001,   max: 45000,   fee: 1050 },
-      { min: 45001,   max: 60000,   fee: 1300 },
-      { min: 60001,   max: 125000,  fee: 1700 },
-      { min: 125001,  max: 250000,  fee: 2500 },
-      { min: 250001,  max: 500000,  fee: 3500 },
-      { min: 500001,  max: 1000000, fee: 5500 },
-      { min: 1000001, max: 3000000, fee: 9000 },
-      { min: 3000001, max: 5000000, fee: 13500 },
-      { min: 5000001, max: 7000000, fee: 16500 },
+      { min: 500,     max: 2500,    fee: 330   },
+      { min: 2501,    max: 5000,    fee: 440   },
+      { min: 5001,    max: 15000,   fee: 700   },
+      { min: 15001,   max: 30000,   fee: 880   },
+      { min: 30001,   max: 45000,   fee: 1210  },
+      { min: 45001,   max: 60000,   fee: 1500  },
+      { min: 60001,   max: 125000,  fee: 1925  },
+      { min: 125001,  max: 250000,  fee: 3575  },
+      { min: 250001,  max: 500000,  fee: 7000  },
+      { min: 500001,  max: 1000000, fee: 12500 },
+      { min: 1000001, max: 2000000, fee: 15000 },
+      { min: 2000001, max: 4000000, fee: 18000 },
+      { min: 4000001, max: 5000000, fee: 20000 },
     ],
     Deposit: [{ min: 500, max: 5000000, fee: 0 }],
   },
   Airtel: {
     Withdrawal: [
-      { min: 500,     max: 2500,    fee: 300  },
-      { min: 2501,    max: 5000,    fee: 400  },
-      { min: 5001,    max: 15000,   fee: 650  },
-      { min: 15001,   max: 30000,   fee: 850  },
-      { min: 30001,   max: 45000,   fee: 1000 },
-      { min: 45001,   max: 60000,   fee: 1250 },
-      { min: 60001,   max: 125000,  fee: 1600 },
-      { min: 125001,  max: 250000,  fee: 2400 },
-      { min: 250001,  max: 500000,  fee: 3400 },
-      { min: 500001,  max: 1000000, fee: 5300 },
-      { min: 1000001, max: 3000000, fee: 8500 },
-      { min: 3000001, max: 5000000, fee: 13000 },
+      { min: 500,     max: 2500,    fee: 330   },
+      { min: 2501,    max: 5000,    fee: 440   },
+      { min: 5001,    max: 15000,   fee: 700   },
+      { min: 15001,   max: 30000,   fee: 880   },
+      { min: 30001,   max: 45000,   fee: 1210  },
+      { min: 45001,   max: 60000,   fee: 1500  },
+      { min: 60001,   max: 125000,  fee: 1925  },
+      { min: 125001,  max: 250000,  fee: 3575  },
+      { min: 250001,  max: 500000,  fee: 7000  },
+      { min: 500001,  max: 1000000, fee: 12500 },
+      { min: 1000001, max: 2000000, fee: 15000 },
+      { min: 2000001, max: 4000000, fee: 18000 },
+      { min: 4000001, max: 5000000, fee: 18000 },
     ],
     Deposit: [{ min: 500, max: 5000000, fee: 0 }],
   },
@@ -477,12 +478,10 @@ const Tariff = (() => {
   /**
    * Look up the tariff fee for a given amount, network and transaction type.
    */
-  function calculate(amount, network, type) {
+  async function calculate(amount, network, type) {
     const config = await DB.get("kc_config") || {};
     const taxRate = config.tax_rate !== undefined ? config.tax_rate : 0.5;
-    const tariffs = (config.tariff_rates && config.tariff_rates[network])
-      ? config.tariff_rates
-      : DEFAULT_TARIFFS;
+    const tariffs = DEFAULT_TARIFFS;
 
     const bands = (tariffs[network] && tariffs[network][type]) || [];
     let fee = 0;
@@ -520,7 +519,7 @@ const KSS = (() => {
    * D = overdue loans × 3                     → penalty
    * R = successful reconciliations × 2        → max 20 pts
    */
-  function calculate() {
+  async function calculate() {
     const txns = await DB.get("kc_transactions");
     const moneyOut = await DB.get("kc_money_outside");
     const profiles = await DB.get("kc_credit_profiles");
@@ -582,7 +581,7 @@ const AIReconciler = (() => {
   /**
    * Diagnose a float discrepancy by inspecting transactions and loans.
    */
-  function diagnose(expectedBalance, actualBalance) {
+  async function diagnose(expectedBalance, actualBalance) {
     const discrepancy = expectedBalance - actualBalance;
 
     if (discrepancy === 0) {
@@ -612,7 +611,8 @@ const AIReconciler = (() => {
 
     // b) Commission withdrawals today
     const today = new Date().toISOString().slice(0, 10);
-    const todayTxns = await DB.get("kc_transactions").filter(
+    const allTxns = await DB.get("kc_transactions");
+    const todayTxns = allTxns.filter(
       (t) => t.timestamp && t.timestamp.startsWith(today)
     );
     const commissions = todayTxns.filter((t) => t.type === "Commission");
@@ -894,7 +894,7 @@ async function refreshDashboard() {
   if (elCount) animateValue(elCount, todayTxns.length, 800, (n) => Math.round(n).toString());
 
   /* ── KSS Score + Bar ── */
-  const kss = KSS.calculate();
+  const kss = await KSS.calculate();
   const elScore = document.getElementById("kss-score");
   if (elScore) elScore.textContent = kss.score;
 
@@ -1034,7 +1034,7 @@ async function refreshMoneyOutside() {
 
     // Attach settle handlers
     list.querySelectorAll(".btn-settle").forEach((btn) => {
-      btn.addEventListener("click", (ev) => {
+      btn.addEventListener("click", async (ev) => {
         ev.stopPropagation();
         const loanId  = btn.getAttribute("data-loan-id");
         const allLoans = await DB.get("kc_money_outside");
@@ -1071,7 +1071,7 @@ async function refreshMoneyOutside() {
 }
 
 /** Refresh the Audit screen. */
-function refreshAudit() {
+async function refreshAudit() {
   const wallets = await DB.get("kc_wallets");
   const txns    = await DB.get("kc_transactions");
   const config  = await DB.get("kc_config") || {};
@@ -1139,13 +1139,25 @@ async function refreshSettings() {
 }
 
 /** Populate the Tariff quick-reference table. */
-function refreshTariff() {
+async function refreshTariff() {
   const activeNetBtn = document.querySelector(".tariff-network-btn.active");
   const network = activeNetBtn ? activeNetBtn.dataset.network : "MTN";
 
   const quickAmounts = [5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
   const table = document.getElementById("tariff-quick-table");
   if (!table) return;
+
+  let rowsHtml = "";
+  for (const amt of quickAmounts) {
+    const r = await Tariff.calculate(amt, network, "Withdrawal");
+    rowsHtml += `
+        <div class="quick-ref-row">
+          <span>${formatUGX(amt)}</span>
+          <span class="qr-fee">${formatUGX(r.fee)}</span>
+          <span class="qr-tax">${formatUGX(r.tax)}</span>
+          <span class="qr-total">${formatUGX(r.customerPays)}</span>
+        </div>`;
+  }
 
   table.innerHTML = `
     <div class="quick-ref-header">
@@ -1154,16 +1166,7 @@ function refreshTariff() {
       <span>Tax</span>
       <span>Customer Pays</span>
     </div>
-    ${quickAmounts.map((amt) => {
-      const r = Tariff.calculate(amt, network, "Withdrawal");
-      return `
-        <div class="quick-ref-row">
-          <span>${formatUGX(amt)}</span>
-          <span class="qr-fee">${formatUGX(r.fee)}</span>
-          <span class="qr-tax">${formatUGX(r.tax)}</span>
-          <span class="qr-total">${formatUGX(r.customerPays)}</span>
-        </div>`;
-    }).join("")}
+    ${rowsHtml}
   `;
 }
 
@@ -1437,7 +1440,7 @@ async function showFraudAlert(sender, text, flags) {
  * 9. EVENT HANDLERS — wired on DOMContentLoaded
  * ────────────────────────────────────────────────────────────────────────── */
 
-function attachEventHandlers() {
+async function attachEventHandlers() {
   /* ── Helper shortcuts ── */
   function on(selector, handler) {
     const el = document.querySelector(selector);
@@ -1576,7 +1579,7 @@ function attachEventHandlers() {
     }
   });
 
-  function openTxnModal() {
+  async function openTxnModal() {
     const modal = document.getElementById("modal-transactions");
     if (!modal) return;
     modal.hidden = false;
@@ -1744,7 +1747,7 @@ function attachEventHandlers() {
     const network = netBtn  ? netBtn.dataset.network  || "MTN"        : "MTN";
     const type    = typeBtn ? typeBtn.dataset.type     || "Withdrawal" : "Withdrawal";
 
-    const result  = Tariff.calculate(amount, network, type);
+    const result  = await Tariff.calculate(amount, network, type);
 
     const card    = document.getElementById("tariff-result");
     const config  = await DB.get("kc_config") || {};
@@ -1835,7 +1838,7 @@ Generated by Ngabo`;
     const diagEl = document.getElementById("audit-diagnosis");
     if (diagEl && actualFloat > 0) {
       diagEl.hidden = false;
-      const diagnosis = AIReconciler.diagnose(expectedFloat, actualFloat);
+      const diagnosis = await AIReconciler.diagnose(expectedFloat, actualFloat);
       const listEl    = document.getElementById("diagnosis-list");
       if (listEl) {
         if (typeof diagnosis === "string") {
@@ -2039,429 +2042,320 @@ document.addEventListener("click", function (e) {
     setTimeout(() => ripple.remove(), 600);
   }
 });
-/ *   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
- 
-   *   M U L T I - K I O S K   D A S H B O A R D   L O G I C 
- 
-   *   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =   * / 
- 
- 
- 
- f u n c t i o n   r e f r e s h M u l t i K i o s k ( )   { 
- 
-     c o n s t   g r i d   =   d o c u m e n t . g e t E l e m e n t B y I d ( " k i o s k - g r i d " ) ; 
- 
-     i f   ( ! g r i d )   r e t u r n ; 
- 
- 
- 
-     c o n s t   a l l P r o f i l e s   =   D B . g e t ( " k c _ c r e d i t _ p r o f i l e s " )   | |   [ ] ; 
- 
-     i f   ( a l l P r o f i l e s . l e n g t h   = = =   0 )   { 
- 
-         g r i d . i n n e r H T M L   =   ` < p   s t y l e = " c o l o r : v a r ( - - t e x t - m u t e d ) ;   t e x t - a l i g n : c e n t e r ;   p a d d i n g :   2 0 p x ; " > N o   k i o s k s   f o u n d . < / p > ` ; 
- 
-         r e t u r n ; 
- 
-     } 
- 
- 
- 
-     g r i d . i n n e r H T M L   =   a l l P r o f i l e s . m a p ( ( p ,   i n d e x )   = >   { 
- 
-         l e t   l o c   =   " N a n s a n a   M a i n " ; 
- 
-         l e t   f l o a t   =   D B . g e t ( " k c _ w a l l e t s " ) . r e d u c e ( ( s ,   w )   = >   s   +   ( w . c u r r e n t _ f l o a t   | |   0 ) ,   0 ) ; 
- 
-         l e t   m a n a g e r   =   " C o l l i n   ( Y o u ) " ; 
- 
-         l e t   s t a t u s   =   " n o r m a l " ; 
- 
-         l e t   s t a t u s L a b e l   =   " � � �   N o r m a l " ; 
- 
-         l e t   d a t a P t s   =   [ 4 ,   6 ,   5 ,   8 ,   7 ,   1 0 ,   9 ] ; 
- 
-         
- 
-         i f   ( i n d e x   = = =   1 )   { 
- 
-             l o c   =   " K y e b a n d o   B r a n c h " ; 
- 
-             f l o a t   =   8 5 0 0 0 0 ; 
- 
-             m a n a g e r   =   " S a r a h " ; 
- 
-             s t a t u s   =   " s h o r t a g e " ; 
- 
-             s t a t u s L a b e l   =   " � � � � � �   U G X   1 5 0 K   S h o r t a g e " ; 
- 
-             d a t a P t s   =   [ 8 ,   7 ,   5 ,   4 ,   3 ,   2 ,   4 ] ; 
- 
-         }   e l s e   i f   ( i n d e x   = = =   2 )   { 
- 
-             l o c   =   " M a k i n d y e   B r a n c h " ; 
- 
-             f l o a t   =   3 2 0 0 0 0 0 ; 
- 
-             m a n a g e r   =   " J o h n " ; 
- 
-             s t a t u s   =   " n o r m a l " ; 
- 
-             s t a t u s L a b e l   =   " � � �   N o r m a l " ; 
- 
-             d a t a P t s   =   [ 2 ,   3 ,   5 ,   8 ,   9 ,   1 2 ,   1 4 ] ; 
- 
-         } 
- 
- 
- 
-         r e t u r n   ` 
- 
-             < d i v   c l a s s = " k i o s k - c a r d "   o n c l i c k = " o p e n K i o s k D e t a i l ( ' $ { l o c } ' ,   ' $ { s t a t u s L a b e l } ' ,   $ { f l o a t } ) " > 
- 
-                 < d i v   c l a s s = " k i o s k - h e a d e r " > 
- 
-                     < d i v   c l a s s = " k i o s k - i n f o " > 
- 
-                         < h 3 > $ { l o c } < / h 3 > 
- 
-                         < s p a n   c l a s s = " k i o s k - m a n a g e r " > M a n a g e r :   $ { m a n a g e r } < / s p a n > 
- 
-                     < / d i v > 
- 
-                     < d i v   c l a s s = " k i o s k - s t a t u s - b a d g e   $ { s t a t u s } " > $ { s t a t u s L a b e l } < / d i v > 
- 
-                 < / d i v > 
- 
-                 < d i v   c l a s s = " k i o s k - m e t r i c s " > 
- 
-                     < d i v   c l a s s = " k i o s k - m e t r i c - b l o c k " > 
- 
-                         < s p a n   c l a s s = " k i o s k - m e t r i c - l a b e l " > T o t a l   C a p i t a l < / s p a n > 
- 
-                         < s p a n   c l a s s = " k i o s k - m e t r i c - v a l u e " > $ { f o r m a t U G X ( f l o a t ) } < / s p a n > 
- 
-                     < / d i v > 
- 
-                     < d i v   c l a s s = " k i o s k - s p a r k l i n e - c o n t a i n e r " > 
- 
-                         < c a n v a s   i d = " s p a r k l i n e - $ { i n d e x } "   c l a s s = " k i o s k - s p a r k l i n e " > < / c a n v a s > 
- 
-                     < / d i v > 
- 
-                 < / d i v > 
- 
-             < / d i v > 
- 
-         ` ; 
- 
-     } ) . j o i n ( " " ) ; 
- 
- 
- 
-     a l l P r o f i l e s . f o r E a c h ( ( p ,   i n d e x )   = >   { 
- 
-         c o n s t   c a n v a s   =   d o c u m e n t . g e t E l e m e n t B y I d ( ` s p a r k l i n e - $ { i n d e x } ` ) ; 
- 
-         l e t   d a t a P t s   =   [ 4 ,   6 ,   5 ,   8 ,   7 ,   1 0 ,   9 ] ; 
- 
-         i f   ( i n d e x   = = =   1 )   d a t a P t s   =   [ 8 ,   7 ,   5 ,   4 ,   3 ,   2 ,   4 ] ; 
- 
-         i f   ( i n d e x   = = =   2 )   d a t a P t s   =   [ 2 ,   3 ,   5 ,   8 ,   9 ,   1 2 ,   1 4 ] ; 
- 
-         i f   ( c a n v a s )   d r a w S p a r k l i n e ( c a n v a s ,   d a t a P t s ) ; 
- 
-     } ) ; 
- 
-  
-  
-         c o n s t   c o u n t E l   =   d o c u m e n t . g e t E l e m e n t B y I d ( " m k - k i o s k - c o u n t " ) ;  
-         i f   ( c o u n t E l )   c o u n t E l . t e x t C o n t e n t   =   k i o s k s . l e n g t h ;  
- } 
- 
- 
- 
- f u n c t i o n   o p e n K i o s k D e t a i l ( n a m e ,   s t a t u s L a b e l ,   t o t a l F l o a t )   { 
- 
-     c o n s t   m o d a l   =   d o c u m e n t . g e t E l e m e n t B y I d ( " m o d a l - k i o s k - d e t a i l " ) ; 
- 
-     c o n s t   t i t l e   =   d o c u m e n t . g e t E l e m e n t B y I d ( " m o d a l - k i o s k - n a m e " ) ; 
- 
-     c o n s t   b o d y   =   d o c u m e n t . g e t E l e m e n t B y I d ( " m o d a l - k i o s k - b o d y " ) ; 
- 
-     
- 
-     i f   ( m o d a l   & &   t i t l e   & &   b o d y )   { 
- 
-         t i t l e . t e x t C o n t e n t   =   n a m e ; 
- 
-         b o d y . i n n e r H T M L   =   ` 
- 
-             < d i v   c l a s s = " k d - s t a t - r o w " > 
- 
-                 < s p a n   c l a s s = " k d - l a b e l " > M T N   F l o a t < / s p a n > 
- 
-                 < s p a n   c l a s s = " k d - v a l u e " > $ { f o r m a t U G X ( t o t a l F l o a t   *   0 . 6 ) } < / s p a n > 
- 
-             < / d i v > 
- 
-             < d i v   c l a s s = " k d - s t a t - r o w " > 
- 
-                 < s p a n   c l a s s = " k d - l a b e l " > A i r t e l   F l o a t < / s p a n > 
- 
-                 < s p a n   c l a s s = " k d - v a l u e " > $ { f o r m a t U G X ( t o t a l F l o a t   *   0 . 3 ) } < / s p a n > 
- 
-             < / d i v > 
- 
-             < d i v   c l a s s = " k d - s t a t - r o w " > 
- 
-                 < s p a n   c l a s s = " k d - l a b e l " > C a s h   i n   D r a w e r < / s p a n > 
- 
-                 < s p a n   c l a s s = " k d - v a l u e " > $ { f o r m a t U G X ( t o t a l F l o a t   *   0 . 1 ) } < / s p a n > 
- 
-             < / d i v > 
- 
-             $ { s t a t u s L a b e l . i n c l u d e s ( ' S h o r t a g e ' )   ?   ` 
- 
-                 < d i v   c l a s s = " k d - a l e r t - b o x " > 
- 
-                     < s t r o n g > � � � � � �   S h o r t a g e   D e t e c t e d < / s t r o n g > < b r > 
- 
-                     S y s t e m   e x p e c t e d   U G X   1 , 0 0 0 , 0 0 0   i n   C a p i t a l   b a s e d   o n   E n d   o f   D a y   a u d i t ,   b u t   a g e n t   r e p o r t e d   U G X   8 5 0 , 0 0 0 . 
- 
-                 < / d i v > 
- 
-             `   :   ' ' } 
- 
-         ` ; 
- 
-         m o d a l . h i d d e n   =   f a l s e ; 
- 
-     } 
- 
- } 
- 
- 
- 
- f u n c t i o n   d r a w S p a r k l i n e ( c a n v a s ,   d a t a )   { 
- 
-     c o n s t   c t x   =   c a n v a s . g e t C o n t e x t ( ' 2 d ' ) ; 
- 
-     c o n s t   w   =   c a n v a s . w i d t h   =   c a n v a s . o f f s e t W i d t h ; 
- 
-     c o n s t   h   =   c a n v a s . h e i g h t   =   c a n v a s . o f f s e t H e i g h t ; 
- 
-     
- 
-     c t x . c l e a r R e c t ( 0 ,   0 ,   w ,   h ) ; 
- 
-     c o n s t   m a x   =   M a t h . m a x ( . . . d a t a ) ; 
- 
-     c o n s t   s t e p   =   w   /   ( d a t a . l e n g t h   -   1 ) ; 
- 
-     
- 
-     c t x . b e g i n P a t h ( ) ; 
- 
-     c t x . m o v e T o ( 0 ,   h   -   ( d a t a [ 0 ] / m a x ) * h ) ; 
- 
-     f o r ( l e t   i = 1 ;   i < d a t a . l e n g t h ;   i + + )   { 
- 
-         c t x . l i n e T o ( i * s t e p ,   h   -   ( d a t a [ i ] / m a x ) * h ) ; 
- 
-     } 
- 
-     c t x . s t r o k e S t y l e   =   ' # 8 B 5 C F 6 ' ; 
- 
-     c t x . l i n e W i d t h   =   2 ; 
- 
-     c t x . s t r o k e ( ) ; 
- 
- } 
- 
- 
- 
- / /   H o o k   u p   t h e   C o n t r o l   P a n e l   b u t t o n   a n d   R o l e   r e s t r i c t i o n s 
- 
- d o c u m e n t . a d d E v e n t L i s t e n e r ( " D O M C o n t e n t L o a d e d " ,   ( )   = >   { 
- 
-     c o n s t   b t n S e e d   =   d o c u m e n t . g e t E l e m e n t B y I d ( " b t n - s e e d - k i o s k s " ) ; 
- 
-     i f   ( b t n S e e d )   { 
- 
-         b t n S e e d . a d d E v e n t L i s t e n e r ( " c l i c k " ,   ( )   = >   { 
- 
-             c o n s t   p r o f i l e s   =   D B . g e t ( " k c _ c r e d i t _ p r o f i l e s " )   | |   [ ] ; 
- 
-             i f   ( p r o f i l e s . l e n g t h   = = =   1 )   { 
- 
-                 p r o f i l e s . p u s h ( {   i d :   D B . g e n e r a t e U U I D ( ) ,   k i o s k _ i d :   " k y e b a n d o - 1 " ,   k i o s k _ s t a b i l i t y _ s c o r e :   4 5   } ) ; 
- 
-                 p r o f i l e s . p u s h ( {   i d :   D B . g e n e r a t e U U I D ( ) ,   k i o s k _ i d :   " m a k i n d y e - 1 " ,   k i o s k _ s t a b i l i t y _ s c o r e :   9 5   } ) ; 
- 
-                 D B . s e t ( " k c _ c r e d i t _ p r o f i l e s " ,   p r o f i l e s ) ; 
- 
-                 s h o w T o a s t ( " S e e d e d   2   r e m o t e   k i o s k s   f o r   d e m o " ,   " s u c c e s s " ) ; 
- 
-                 i f   ( N a v . g e t C u r r e n t ( )   = = =   " m u l t i - k i o s k " )   r e f r e s h M u l t i K i o s k ( ) ; 
- 
-             } 
- 
-         } ) ; 
- 
-     } 
- 
- 
- 
-     / /   H a n d l e   w o r k e r   r o l e   r e s t r i c t i o n s   d y n a m i c a l l y 
- 
-     c o n s t   o r i g R o l e S w i t c h   =   d o c u m e n t . g e t E l e m e n t B y I d ( " r o l e - w o r k e r " ) ; 
- 
-     i f   ( o r i g R o l e S w i t c h )   { 
- 
-         o r i g R o l e S w i t c h . a d d E v e n t L i s t e n e r ( " c h a n g e " ,   ( )   = >   { 
- 
-             c o n s t   n a v M u l t i   =   d o c u m e n t . g e t E l e m e n t B y I d ( " n a v - m u l t i - k i o s k " ) ; 
- 
-             i f   ( n a v M u l t i )   n a v M u l t i . s t y l e . d i s p l a y   =   " n o n e " ; 
- 
-         } ) ; 
- 
-     } 
- 
-     c o n s t   o r i g R o l e O w n e r   =   d o c u m e n t . g e t E l e m e n t B y I d ( " r o l e - o w n e r " ) ; 
- 
-     i f   ( o r i g R o l e O w n e r )   { 
- 
-         o r i g R o l e O w n e r . a d d E v e n t L i s t e n e r ( " c h a n g e " ,   ( )   = >   { 
- 
-             c o n s t   n a v M u l t i   =   d o c u m e n t . g e t E l e m e n t B y I d ( " n a v - m u l t i - k i o s k " ) ; 
- 
-             i f   ( n a v M u l t i )   n a v M u l t i . s t y l e . d i s p l a y   =   " f l e x " ; 
- 
-         } ) ; 
- 
-     } 
- 
- 
- 
-     / /   I n i t i a l   h i d i n g   i f   a l r e a d y   w o r k e r 
- 
-     c o n s t   r o l e   =   ( D B . g e t ( " k c _ c o n f i g " )   | |   { } ) . r o l e   | |   " o w n e r " ; 
- 
-     c o n s t   n a v M u l t i   =   d o c u m e n t . g e t E l e m e n t B y I d ( " n a v - m u l t i - k i o s k " ) ; 
- 
-     i f   ( n a v M u l t i )   { 
- 
-         n a v M u l t i . s t y l e . d i s p l a y   =   r o l e   = = =   " w o r k e r "   ?   " n o n e "   :   " f l e x " ; 
- 
-     } 
- 
- } ) ; 
- 
- 
-/* ============================================================================
-   NATIVE ANDROID NOTIFICATION BRIDGE — Production Bridge
-   ---------------------------------------------------------------------------
-   NotificationListenerService.java fires 'nativeNotificationReceived'
-   via evaluateJavascript.
-   ============================================================================ */
+/* =================================================================
+ * MULTI-KIOSK DASHBOARD LOGIC
+ * ============================================================== */
 
-window.addEventListener('nativeNotificationReceived', async function(event) {
-  const { packageName, title, body } = event.detail;
 
-  // Use the same logic as SMS bridge, treating title as sender if applicable
-  // or mapping packageName to a network.
-  const sender = title || packageName;
 
-  // Route to the same processing logic as SMS
-  await processIncomingMessage(body, sender, 'Notification');
-});
+function refreshMultiKiosk() {
 
-/* ============================================================================
-   NATIVE ANDROID SMS BRIDGE — Production Bridge
-   ---------------------------------------------------------------------------
-   SmsBroadcastReceiver.java fires 'nativeSmsReceived' via evaluateJavascript.
-   ============================================================================ */
+  const grid = document.getElementById("kiosk-grid");
 
-window.addEventListener('nativeSmsReceived', async function(event) {
-  const { sender, body, isTrusted } = event.detail;
-  await processIncomingMessage(body, sender, 'SMS_Native', isTrusted);
-});
+  if (!grid) return;
 
-/**
- * Shared logic for processing incoming SMS or Notifications.
- */
-async function processIncomingMessage(body, sender, sourceType, isTrusted = false) {
-  // Safety: ignore empty payloads
-  if (!body || body.trim() === '') return;
 
-  // --- Parse the message ---
-  const parsed = Parser.parse(body, sender);
 
-  // --- Security check ---
-  const wallets = await DB.get('kc_wallets');
-  const targetWallet = wallets.find(w =>
-    parsed.success && parsed.network === 'Airtel'
-      ? w.carrier_type === 'Airtel'
-      : w.carrier_type === 'MTN'
-  );
-  const currentBalance = targetWallet ? targetWallet.current_float : null;
-  const secResult = Security.validate(body, sender, currentBalance);
+  const allProfiles = DB.get("kc_credit_profiles") || [];
 
-  // Critical fraud → show overlay and stop
-  if (!secResult.safe && secResult.severity === 'critical') {
-    showFraudAlert(sender, body, secResult.flags);
+  if (allProfiles.length === 0) {
+
+    grid.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding: 20px;">No kiosks found.</p>`;
+
     return;
+
   }
 
-  // Unknown pattern → silent ignore (not a MoMo message)
-  if (!parsed.success) return;
 
-  // --- Write to DB ---
-  if (targetWallet) {
-    const txn = {
-      id:                DB.generateUUID(),
-      wallet_id:         targetWallet.id,
-      type:              parsed.type,
-      amount:            parsed.amount,
-      commission_earned: parsed.commission || 0,
-      recorded_balance:  parsed.balance || targetWallet.current_float,
-      counterparty:      parsed.counterparty || '',
-      timestamp:         new Date().toISOString(),
-      raw_payload:       body,
-      source_type:       sourceType,
-      security_flag:     secResult.safe ? 'Verified' : 'Mismatch',
-    };
-    const txns = await DB.get('kc_transactions');
-    txns.push(txn);
-    await DB.set('kc_transactions', txns);
 
-    // Update wallet balance
-    if (parsed.type === 'Deposit') {
-      targetWallet.current_float += parsed.amount;
-      targetWallet.current_cash  -= parsed.amount;
-    } else if (parsed.type === 'Withdrawal') {
-      targetWallet.current_float -= parsed.amount;
-      targetWallet.current_cash  += parsed.amount;
+  grid.innerHTML = allProfiles.map((p, index) => {
+
+    let loc = "Nansana Main";
+
+    let float = DB.get("kc_wallets").reduce((s, w) => s + (w.current_float || 0), 0);
+
+    let manager = "Collin (You)";
+
+    let status = "normal";
+
+    let statusLabel = "뿯½뿯½뿯½ Normal";
+
+    let dataPts = [4, 6, 5, 8, 7, 10, 9];
+
+    
+
+    if (index === 1) {
+
+      loc = "Kyebando Branch";
+
+      float = 850000;
+
+      manager = "Sarah";
+
+      status = "shortage";
+
+      statusLabel = "뿯½뿯½뿯½뿯½뿯½뿯½ UGX 150K Shortage";
+
+      dataPts = [8, 7, 5, 4, 3, 2, 4];
+
+    } else if (index === 2) {
+
+      loc = "Makindye Branch";
+
+      float = 3200000;
+
+      manager = "John";
+
+      status = "normal";
+
+      statusLabel = "뿯½뿯½뿯½ Normal";
+
+      dataPts = [2, 3, 5, 8, 9, 12, 14];
+
     }
-    if (parsed.commission) targetWallet.current_float += parsed.commission;
-    await DB.set('kc_wallets', wallets);
-  }
 
-  // --- Notify the agent ---
-  const config = await DB.get('kc_config') || {};
-  if (config.role !== 'worker') {
-    const msgPrefix = sourceType === 'Notification' ? 'Notification' : 'SMS';
-    showToast(
-      `${msgPrefix} auto-recorded \u2714 ` + (isTrusted || sourceType === 'Notification' ? '' : '\u26a0\ufe0f Verify sender!'),
-      isTrusted || sourceType === 'Notification' ? 'success' : 'warning'
-    );
-  }
 
-  // If dashboard is currently visible, refresh it immediately
-  if (Nav.getCurrent() === 'dashboard') {
-    refreshDashboard();
-  }
+
+    return `
+
+      <div class="kiosk-card" onclick="openKioskDetail('${loc}', '${statusLabel}', ${float})">
+
+        <div class="kiosk-header">
+
+          <div class="kiosk-info">
+
+            <h3>${loc}</h3>
+
+            <span class="kiosk-manager">Manager: ${manager}</span>
+
+          </div>
+
+          <div class="kiosk-status-badge ${status}">${statusLabel}</div>
+
+        </div>
+
+        <div class="kiosk-metrics">
+
+          <div class="kiosk-metric-block">
+
+            <span class="kiosk-metric-label">Total Capital</span>
+
+            <span class="kiosk-metric-value">${formatUGX(float)}</span>
+
+          </div>
+
+          <div class="kiosk-sparkline-container">
+
+            <canvas id="sparkline-${index}" class="kiosk-sparkline"></canvas>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    `;
+
+  }).join("");
+
+
+
+  allProfiles.forEach((p, index) => {
+
+    const canvas = document.getElementById(`sparkline-${index}`);
+
+    let dataPts = [4, 6, 5, 8, 7, 10, 9];
+
+    if (index === 1) dataPts = [8, 7, 5, 4, 3, 2, 4];
+
+    if (index === 2) dataPts = [2, 3, 5, 8, 9, 12, 14];
+
+    if (canvas) drawSparkline(canvas, dataPts);
+
+  });
+
+
+
+    const countEl = document.getElementById("mk-kiosk-count");
+    if (countEl) countEl.textContent = kiosks.length;
 }
 
+
+
+function openKioskDetail(name, statusLabel, totalFloat) {
+
+  const modal = document.getElementById("modal-kiosk-detail");
+
+  const title = document.getElementById("modal-kiosk-name");
+
+  const body = document.getElementById("modal-kiosk-body");
+
+  
+
+  if (modal && title && body) {
+
+    title.textContent = name;
+
+    body.innerHTML = `
+
+      <div class="kd-stat-row">
+
+        <span class="kd-label">MTN Float</span>
+
+        <span class="kd-value">${formatUGX(totalFloat * 0.6)}</span>
+
+      </div>
+
+      <div class="kd-stat-row">
+
+        <span class="kd-label">Airtel Float</span>
+
+        <span class="kd-value">${formatUGX(totalFloat * 0.3)}</span>
+
+      </div>
+
+      <div class="kd-stat-row">
+
+        <span class="kd-label">Cash in Drawer</span>
+
+        <span class="kd-value">${formatUGX(totalFloat * 0.1)}</span>
+
+      </div>
+
+      ${statusLabel.includes('Shortage') ? `
+
+        <div class="kd-alert-box">
+
+          <strong>뿯½뿯½뿯½뿯½뿯½뿯½ Shortage Detected</strong><br>
+
+          System expected UGX 1,000,000 in Capital based on End of Day audit, but agent reported UGX 850,000.
+
+        </div>
+
+      ` : ''}
+
+    `;
+
+    modal.hidden = false;
+
+  }
+
+}
+
+
+
+function drawSparkline(canvas, data) {
+
+  const ctx = canvas.getContext('2d');
+
+  const w = canvas.width = canvas.offsetWidth;
+
+  const h = canvas.height = canvas.offsetHeight;
+
+  
+
+  ctx.clearRect(0, 0, w, h);
+
+  const max = Math.max(...data);
+
+  const step = w / (data.length - 1);
+
+  
+
+  ctx.beginPath();
+
+  ctx.moveTo(0, h - (data[0]/max)*h);
+
+  for(let i=1; i<data.length; i++) {
+
+    ctx.lineTo(i*step, h - (data[i]/max)*h);
+
+  }
+
+  ctx.strokeStyle = '#8B5CF6';
+
+  ctx.lineWidth = 2;
+
+  ctx.stroke();
+
+}
+
+
+
+// Hook up the Control Panel button and Role restrictions
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const btnSeed = document.getElementById("btn-seed-kiosks");
+
+  if (btnSeed) {
+
+    btnSeed.addEventListener("click", () => {
+
+      const profiles = DB.get("kc_credit_profiles") || [];
+
+      if (profiles.length === 1) {
+
+        profiles.push({ id: DB.generateUUID(), kiosk_id: "kyebando-1", kiosk_stability_score: 45 });
+
+        profiles.push({ id: DB.generateUUID(), kiosk_id: "makindye-1", kiosk_stability_score: 95 });
+
+        DB.set("kc_credit_profiles", profiles);
+
+        showToast("Seeded 2 remote kiosks for demo", "success");
+
+        if (Nav.getCurrent() === "multi-kiosk") refreshMultiKiosk();
+
+      }
+
+    });
+
+  }
+
+
+
+  // Handle worker role restrictions dynamically
+
+  const origRoleSwitch = document.getElementById("role-worker");
+
+  if (origRoleSwitch) {
+
+    origRoleSwitch.addEventListener("change", () => {
+
+      const navMulti = document.getElementById("nav-multi-kiosk");
+
+      if (navMulti) navMulti.style.display = "none";
+
+    });
+
+  }
+
+  const origRoleOwner = document.getElementById("role-owner");
+
+  if (origRoleOwner) {
+
+    origRoleOwner.addEventListener("change", () => {
+
+      const navMulti = document.getElementById("nav-multi-kiosk");
+
+      if (navMulti) navMulti.style.display = "flex";
+
+    });
+
+  }
+
+
+
+  // Initial hiding if already worker
+
+  const role = (DB.get("kc_config") || {}).role || "owner";
+
+  const navMulti = document.getElementById("nav-multi-kiosk");
+
+  if (navMulti) {
+
+    navMulti.style.display = role === "worker" ? "none" : "flex";
+
+  }
+
+});
